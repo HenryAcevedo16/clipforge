@@ -1,0 +1,2 @@
+Pon aquí archivos .ttf/.otf (por ejemplo Montserrat ExtraBold, The Bold Font, Komika Axis)
+y escribe su nombre exacto en el campo "Fuente" de la app.

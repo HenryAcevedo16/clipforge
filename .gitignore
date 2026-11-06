@@ -1,0 +1,24 @@
+# Entorno de Python
+.venv/
+__pycache__/
+*.pyc
+
+# Videos y trabajos procesados (pesan mucho)
+jobs/*
+!jobs/.gitkeep
+salida/
+*.mp4
+*.mkv
+*.webm
+*.part
+
+# Modelos que se descargan solos la primera vez
+models/
+
+# Fuentes propias (pueden tener licencia)
+fonts/*
+!fonts/LEEME.txt
+
+# Claves y configuración local
+.env
+*.log
