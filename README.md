@@ -91,7 +91,7 @@ Arriba de las opciones hay dos modos:
   - *Para vender:* `proxy_url` apuntando al servidor de `servidor_ia/`. La clave nunca sale del servidor y cada
     cliente usa su clave de licencia, con un límite de usos de IA al día.
 - **Mi propia clave:** el usuario pega su clave de Gemini o de Claude y paga lo que use.
-El modo desarrollador (`set NOVOCLIP_DEV=1`) permite además usar Claude Code con tu suscripción personal; no lo
+Para usar tu suscripción de Claude (Claude Code), elígela en Ajustes -> Mi suscripción de Claude.
 actives en las copias que repartas.
 
 ## Ajuste automático según el equipo (nuevo)
@@ -184,8 +184,11 @@ python novoclip.py mi_video.mp4 -n 5 --min 15 --max 45 --style karaoke --lang es
 ## 🎯 Encuadre automático: cuándo divide la pantalla
 En modo **Auto** la pantalla solo se divide (webcam arriba, juego abajo) si de verdad es un stream: una cara pequeña y quieta en una esquina, sin más personas en el plano, y un fondo con movimiento (el juego). Podcasts, entrevistas, conversaciones y videollamadas nunca se dividen: se sigue a quien habla o se abre el plano para que salgan todos. Si quieres forzar la división, elige a mano "Streamer" o "Dividido".
 
-## 👑 Modo dueño: "IA incluida" = tu suscripción de Claude
-Para uso personal, abre la app con `iniciar_modo_dueno.bat` (necesitas Claude Code instalado y con sesión iniciada). En ese modo, **IA incluida** usa tu propia suscripción de Claude. Con `iniciar_windows.bat` normal (y para tus amigos) la IA incluida es el servidor con licencia o la clave de Gemini que prepares, y si no hay ninguna, "Mi propia clave".
+## 🤖 Elegir la IA con un botón
+En **Ajustes → Inteligencia artificial** eliges qué IA usar: **Automática**, **Mi suscripción de Claude** (Claude Code, con la cuenta iniciada en tu PC; solo para tus propios videos), **API de Claude** (con clave), **Gemini** (con clave) o **IA incluida** (licencia de NovoClip). Cada opción te dice si está lista. En el paso 2 también puedes cambiarla solo para ese video. Ya no hace falta un archivo `.bat` aparte.
+
+## 🏷️ Kit de marca: tu logo como marca de agua
+Sube tu logo en **Kit de marca**, elige esquina, tamaño y opacidad, y selecciona la plantilla al crear tus clips: el logo sale en todos. En el editor de cada clip puedes quitarlo ("Mostrar mi logo"). Se aplica el estilo de subtítulos y el logo; la tipografía y los colores propios aún no.
 
 ## 📡 Directos de Twitch, Kick y TikTok
 Pega el enlace del canal (`twitch.tv/canal`, `kick.com/canal`, `tiktok.com/@usuario/live`) y la app lo reconoce: aparece una pastilla con el icono de la plataforma y "EN VIVO", y activa sola el modo directo. También funcionan videos, VODs y clips de esas plataformas y de YouTube.

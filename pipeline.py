@@ -69,6 +69,8 @@ def begin_job() -> int:
 
 
 def end_job() -> None:
+    global _AI_PROVIDER
+    _AI_PROVIDER = "auto"          # la IA elegida para un trabajo no se queda pegada para la pantalla de Ajustes
     ident = threading.get_ident()
     with _REG_LOCK:
         _CANCEL.pop(ident, None)
@@ -189,6 +191,12 @@ class Options:
     music: bool = True              # música de fondo (si hay archivos en la carpeta music/) que baja con la voz
     music_volume: float = 0.18
     highlight_keywords: bool = True  # resaltar en color las palabras clave de los subtítulos
+    # --- Kit de marca: logo como marca de agua ---
+    logo_path: str = ""             # imagen del logo (png/jpg/webp); vacío = sin logo
+    logo_on: bool = True            # interruptor (también por clip en el editor)
+    logo_pos: str = "br"            # tl | tr | bl | br | center
+    logo_size: float = 16.0         # % del ancho del video
+    logo_opacity: float = 80.0      # % de opacidad
     # --- velocidad ---
     # --- modo en vivo ---
     live_window: int = 180          # cada cuántos segundos se analiza lo nuevo del directo
@@ -1010,7 +1018,13 @@ def _claude_cli() -> Optional[str]:
 
 CONFIG_PATH = ROOT / "config.json"
 GEMINI_DEFAULT_MODEL = "gemini-flash-latest"
-_AI_PROVIDER = "auto"     # auto | claude | gemini  (lo fija cada trabajo desde Options.ai_provider)
+_AI_PROVIDER = "auto"     # IA elegida para este trabajo ("auto" = la de Ajustes); ver AI_SOURCES
+AI_SOURCES = ("auto", "cli", "claude_api", "gemini", "incluida")
+
+
+def norm_provider(p) -> str:
+    """Valida la IA elegida (los valores antiguos 'claude' pasan a 'auto')."""
+    return p if p in AI_SOURCES else "auto"
 
 
 def load_config() -> dict:
@@ -1149,15 +1163,45 @@ def claude_backend() -> Optional[str]:
     return None
 
 
+def ai_source() -> str:
+    """Qué IA quiere el usuario: auto | cli (su suscripción de Claude) | claude_api | gemini | incluida.
+    Manda lo elegido para el trabajo; si no, lo guardado en Ajustes."""
+    if _AI_PROVIDER != "auto":
+        return _AI_PROVIDER
+    s = os.environ.get("NOVOCLIP_AI_SOURCE") or load_config().get("ai_source")
+    if s in AI_SOURCES:
+        return s
+    return "incluida" if ai_mode() == "incluida" else "auto"
+
+
+def cli_available() -> bool:
+    return os.environ.get("NOVOCLIP_NO_CLI") != "1" and bool(_claude_cli())
+
+
 def ai_backend() -> Optional[str]:
-    """Qué IA se usa: 'api' (clave de Claude), 'cli' (Claude Code con tu suscripción), 'gemini' o None.
-    Con "auto" se prefiere Claude y, si no está, Gemini."""
-    if ai_mode() == "incluida":
+    """Qué IA se usa: 'cli' (tu suscripción, Claude Code), 'api' (clave de Claude), 'gemini', 'proxy'/'gemini_inc'
+    (IA incluida) o None. Lo que el usuario elige se respeta; con "auto" se prefiere Claude y, si no, Gemini."""
+    src = ai_source()
+    if src == "incluida":
         return {"proxy": "proxy", "key": "gemini_inc", "claude": "cli"}.get(included_source() or "")
-    gem = "gemini" if gemini_key() else None
-    if _AI_PROVIDER == "gemini":
-        return gem or claude_backend()
-    return claude_backend() or gem
+    if src == "cli":
+        return "cli" if cli_available() else None
+    if src == "claude_api":
+        return "api" if anthropic_key() else None
+    if src == "gemini":
+        return "gemini" if gemini_key() else None
+    return claude_backend() or ("gemini" if gemini_key() else None)
+
+
+def ai_sources_status() -> dict:
+    """Disponibilidad de cada opción para los botones de Ajustes."""
+    inc = included_status()
+    return {"auto": {"ok": bool(claude_backend() or gemini_key()), "text": "La app elige: Claude si hay, y si no Gemini."},
+            "cli": {"ok": cli_available(), "text": "Usa tu suscripción de Claude por Claude Code." if cli_available()
+                    else "Claude Code no está instalado o no se encuentra en este equipo."},
+            "claude_api": {"ok": bool(anthropic_key()), "text": "Clave de la API de Claude guardada." if anthropic_key() else "Falta la clave de la API de Claude."},
+            "gemini": {"ok": bool(gemini_key()), "text": "Clave de Gemini guardada." if gemini_key() else "Falta la clave de Gemini."},
+            "incluida": {"ok": bool(inc.get("ok")), "text": inc.get("text", "")}}
 
 
 def backend_name(b: Optional[str]) -> str:
@@ -2542,10 +2586,28 @@ def render_clip(src: Path, clip: Clip, tr: dict, opts: Options, outdir: Path, me
     if FONTS_DIR.exists() and any(f.suffix.lower() in (".ttf", ".otf") for f in FONTS_DIR.iterdir()):
         ass_f += f":fontsdir='{_filter_path(FONTS_DIR)}'"
     venc = video_encoder(opts)
-    vchain += [ass_f, "format=" + venc[venc.index("-pix_fmt") + 1]]
-    graph = [f"[0:v]{','.join(vchain)}[vout]"]
+    pixfmt = venc[venc.index("-pix_fmt") + 1]
     inputs = ["-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{out_w}x{out_h}", "-r", f"{fps:.3f}", "-i", "-",
               "-i", str(tmp)]
+    nxt = 2
+    logo = Path(opts.logo_path) if (opts.logo_on and opts.logo_path) else None
+    if logo is not None and not logo.is_file():
+        logo = None
+    if logo is not None:       # Kit de marca: el logo como marca de agua (sobre el video, bajo los subtítulos)
+        inputs += ["-loop", "1", "-i", str(logo)]
+        li, nxt = nxt, nxt + 1
+        lw = max(16, int(out_w * min(60.0, max(4.0, float(opts.logo_size))) / 100) // 2 * 2)
+        op = min(1.0, max(0.05, float(opts.logo_opacity) / 100))
+        mx, my_t, my_b = int(out_w * 0.04), int(out_h * 0.08), int(out_h * 0.14)
+        xy = {"tl": f"{mx}:{my_t}", "tr": f"W-w-{mx}:{my_t}", "bl": f"{mx}:H-h-{my_b}",
+              "br": f"W-w-{mx}:H-h-{my_b}", "center": "(W-w)/2:(H-h)/2"}.get(opts.logo_pos, f"W-w-{mx}:H-h-{my_b}")
+        graph = [f"[0:v]{','.join(vchain) if vchain else 'null'}[base]",
+                 f"[{li}:v]scale={lw}:-1,format=rgba,colorchannelmixer=aa={op:.2f}[lg]",
+                 f"[base][lg]overlay={xy}:shortest=1[ovr]",
+                 f"[ovr]{ass_f},format={pixfmt}[vout]"]
+    else:
+        vchain += [ass_f, "format=" + pixfmt]
+        graph = [f"[0:v]{','.join(vchain)}[vout]"]
     maps = ["-map", "[vout]"]
     if m["has_audio"]:
         voice = "loudnorm=I=-14:TP=-1.5:LRA=11," if opts.loudnorm else ""
@@ -2554,7 +2616,7 @@ def render_clip(src: Path, clip: Clip, tr: dict, opts: Options, outdir: Path, me
         if song:
             inputs += ["-stream_loop", "-1", "-i", str(song)]
             graph.append("[voice]asplit=2[v1][v2]")
-            graph.append(f"[2:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,"
+            graph.append(f"[{nxt}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,"
                          f"volume={opts.music_volume:.3f},afade=t=in:d=0.8[mus]")
             graph.append("[mus][v2]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=350[duck]")
             graph.append("[v1][duck]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[aout]")
@@ -2883,7 +2945,7 @@ def align_clip(c: Clip, tr_sec: dict, approx: Optional[dict] = None, pad: float 
 def process(source: str, workdir: Path, opts: Options, progress: ProgressFn = _noop,
             on_update: Optional[Callable[[dict], None]] = None) -> dict:
     global _AI_PROVIDER
-    _AI_PROVIDER = opts.ai_provider if opts.ai_provider in ("auto", "claude", "gemini") else "auto"
+    _AI_PROVIDER = norm_provider(opts.ai_provider)
     _report = progress
 
     def progress(pct: float, msg: str) -> None:  # noqa: F811 - cada aviso de progreso comprueba si se canceló
@@ -3100,7 +3162,7 @@ def _job_info(workdir: Path) -> dict:
         return {}
 
 
-EDIT_TOGGLES = ("zoom", "jumpcuts", "progress_bar", "color_pop", "music", "highlight_keywords", "loudnorm")
+EDIT_TOGGLES = ("zoom", "jumpcuts", "progress_bar", "color_pop", "music", "highlight_keywords", "loudnorm", "logo_on")
 
 
 def load_clip_for_edit(workdir: Path, index: int) -> dict:
@@ -3127,6 +3189,7 @@ def load_clip_for_edit(workdir: Path, index: int) -> dict:
             "caption_style": c.get("edit_style") or o.get("caption_style", "viral"),
             "styles": list(STYLES) + ["none"],
             "show_hook": bool(c.get("edit_show_hook", o.get("show_hook", True))),
+            "has_logo": bool(o.get("logo_path")) and Path(o.get("logo_path", "")).is_file(),
             "toggles": {k: bool(c.get("edit_toggles", {}).get(k, o.get(k, getattr(Options, k)))) for k in EDIT_TOGGLES}}
 
 
@@ -3156,7 +3219,7 @@ def rerender_clip(workdir: Path, index: int, edits: dict, progress: ProgressFn =
     o = replace(base, **{k: v for k, v in job.get("opts", {}).items() if hasattr(base, k)})
     o = resolve_auto(o)
     global _AI_PROVIDER
-    _AI_PROVIDER = o.ai_provider if o.ai_provider in ("auto", "claude", "gemini") else "auto"
+    _AI_PROVIDER = norm_provider(o.ai_provider)
     if edits.get("layout"):
         o.layout = edits["layout"]
     if edits.get("caption_style"):
@@ -3504,7 +3567,7 @@ def process_live(source: str, workdir: Path, opts: Options, progress: ProgressFn
     Termina cuando acaba el directo o cuando se cancela (los clips ya hechos se conservan)."""
     from dataclasses import replace
     global _AI_PROVIDER
-    _AI_PROVIDER = opts.ai_provider if opts.ai_provider in ("auto", "claude", "gemini") else "auto"
+    _AI_PROVIDER = norm_provider(opts.ai_provider)
     opts = resolve_auto(opts)
     _report = progress
 
@@ -3790,7 +3853,7 @@ def preview_framing(source: str, workdir: Path, opts: Options, at: float = 0.35,
     """Crea un clip de muestra de ~10 s con el encuadre y los efectos elegidos (sin subtítulos ni IA de selección),
     para ver cómo quedará antes de procesar el video entero. `at` = posición del video (0-1)."""
     global _AI_PROVIDER
-    _AI_PROVIDER = opts.ai_provider if opts.ai_provider in ("auto", "claude", "gemini") else "auto"
+    _AI_PROVIDER = norm_provider(opts.ai_provider)
     o = resolve_auto(replace(opts, caption_style="none", show_hook=False, music=False, review=False, loudnorm=False))
     workdir.mkdir(parents=True, exist_ok=True)
     outdir = workdir / "clips"

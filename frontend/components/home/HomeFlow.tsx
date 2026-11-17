@@ -3,7 +3,7 @@ import { Card, Chip, Tabs } from "@heroui/react";
 import { ArrowLeft, ArrowRight, Captions, ChevronDown, FileVideo, Film, Link2, Eye, Scissors, Send, Sparkles, Star, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError, type BrandTemplate, type ClipResult, type Job, type SubtitleStyleId } from "@/lib/api";
+import { api, ApiError, type AiSource, type BrandTemplate, type ClipResult, type Job, type SubtitleStyleId } from "@/lib/api";
 import { readString, writeString } from "@/lib/api/storage";
 import { ASPECT_META, FONT_META, STYLE_META, STYLE_ORDER } from "@/lib/brand";
 import { useResource } from "@/lib/hooks/useResource";
@@ -53,12 +53,16 @@ interface Settings {
   liveEvery: number; // minutos entre análisis de la IA en un directo
   smartDownload: boolean;
   quality: "max" | "1080";
+  aiProvider: AiSource; // IA para este video (auto = la de Ajustes)
+  logoOn: boolean; // poner el logo de la plantilla como marca de agua
 }
 
 const DEFAULTS: Settings = {
   numClips: 5, minLen: 20, maxLen: 60, aspect: "9:16", captionStyle: "viral", review: true, templateId: null,
-  layout: "auto", jumpcuts: true, zoom: true, progressBar: true, colorPop: true, music: true, captions: true, showHook: true, highlightKw: true, loudnorm: true, useAi: true, refine: true, snapSilence: true, live: false, liveEvery: 3, smartDownload: true, quality: "max",
+  layout: "auto", jumpcuts: true, zoom: true, progressBar: true, colorPop: true, music: true, captions: true, showHook: true, highlightKw: true, loudnorm: true, useAi: true, refine: true, snapSilence: true, live: false, liveEvery: 3, smartDownload: true, quality: "max", aiProvider: "auto", logoOn: true,
 };
+
+const AI_NAMES: Record<AiSource, string> = { auto: "Automática", cli: "Mi suscripción de Claude", claude_api: "API de Claude", gemini: "Gemini", incluida: "IA incluida" };
 
 const LAYOUT_OPTIONS = [
   { value: "auto", label: "Automático", sub: "enfoca a quien habla" },
@@ -181,7 +185,20 @@ export function HomeFlow() {
     setSending(true);
     try {
       const v = url.trim();
+      let logo: File | null = null;
+      if (s.logoOn && tpl?.logo && tpl.watermark.enabled) {
+        try {
+          const blob = await (await fetch(tpl.logo.dataUrl)).blob();
+          logo = new File([blob], tpl.logo.name || "logo.png", { type: blob.type });
+        } catch {
+          logo = null;
+        }
+      }
       const { id } = await api.createJob({
+        logo,
+        logo_pos: tpl?.watermark.position,
+        logo_size: tpl?.watermark.size,
+        logo_opacity: tpl?.watermark.opacity,
         url: mode === "file" ? undefined : /^https?:\/\//i.test(v) ? v : "https://" + v,
         file: mode === "file" ? file : null,
         num_clips: s.numClips,
@@ -206,6 +223,7 @@ export function HomeFlow() {
         live_window: s.liveEvery * 60,
         smart_download: s.smartDownload,
         source_quality: s.quality,
+        ai_provider: s.aiProvider,
       });
       writeString(JOB_KEY, id, "session");
       setJob({ id, status: "queued", progress: 0, message: "En cola...", log: [], source: mode === "file" && file ? file.name : v, created: Date.now() / 1000, result: null });
@@ -500,6 +518,15 @@ export function HomeFlow() {
                 )}
               </fieldset>
 
+              {tpl?.logo && tpl.watermark.enabled && (
+                <div className="flex items-center gap-3 rounded-2xl border border-line bg-raised-2/40 p-3.5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={tpl.logo.dataUrl} alt="" className="size-12 shrink-0 rounded-xl bg-black/40 object-contain p-1" />
+                  <div className="min-w-0 flex-1">
+                    <Switch checked={s.logoOn} onChange={(v) => setS({ ...s, logoOn: v })} label="Poner mi logo como marca de agua" hint="Sale en todos los clips, en la esquina que elegiste en el Kit de marca." />
+                  </div>
+                </div>
+              )}
               <div className="grid gap-4 sm:grid-cols-2">
                 <Switch checked={s.captions} onChange={(v) => setS({ ...s, captions: v })} label="Subtítulos" hint="Apágalo si quieres el clip sin texto en pantalla." />
                 <Switch checked={s.highlightKw} onChange={(v) => setS({ ...s, highlightKw: v })} disabled={!s.captions} label="Resaltar palabras clave" hint="Pinta de otro color las palabras importantes." />
@@ -538,6 +565,19 @@ export function HomeFlow() {
 
             <Card className="gap-4 border border-line p-5">
               <h3 className="text-lg font-extrabold">Inteligencia artificial y cortes</h3>
+              {s.useAi && (config.data?.ai_sources ? (
+                <Segmented<AiSource>
+                  label="IA para este video"
+                  value={s.aiProvider}
+                  onChange={(v) => setS({ ...s, aiProvider: v })}
+                  options={[
+                    { value: "auto" as AiSource, label: "Como en Ajustes", sub: config.data.ai_name || "sin IA" },
+                    ...(["cli", "claude_api", "gemini", "incluida"] as AiSource[])
+                      .filter((k) => config.data!.ai_sources![k]?.ok)
+                      .map((k) => ({ value: k, label: AI_NAMES[k] })),
+                  ]}
+                />
+              ) : null)}
               <Switch checked={s.useAi} onChange={(v) => setS({ ...s, useAi: v })} label="Elegir los mejores momentos con IA" hint="Si lo apagas, usa un método básico sin IA (más rápido, menos preciso)." />
               <Switch checked={s.refine} onChange={(v) => setS({ ...s, refine: v })} disabled={!s.useAi} label="Afinar inicio y final con IA" hint="Una segunda pasada para que el clip empiece y termine justo." />
               <Switch checked={s.snapSilence} onChange={(v) => setS({ ...s, snapSilence: v })} label="Cortar en silencios naturales" hint="Evita cortar a mitad de palabra." />

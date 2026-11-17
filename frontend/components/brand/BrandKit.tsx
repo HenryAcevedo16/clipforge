@@ -147,7 +147,7 @@ export function BrandKit() {
           </Button>
         }
       />
-      <PreviewNotice>Por ahora solo el estilo de subtítulos de la plantilla se aplica a los clips. El logo, la marca de agua, la tipografía y los colores propios todavía no se dibujan en el video.</PreviewNotice>
+      <PreviewNotice>El estilo de subtítulos y el logo con su marca de agua (esquina, tamaño y opacidad) ya se aplican a los clips: elige la plantilla en el paso 2 al crear tus clips. La tipografía y los colores propios todavía no se dibujan en el video.</PreviewNotice>
 
       {res.loading && (
         <>

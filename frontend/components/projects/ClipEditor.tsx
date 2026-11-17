@@ -13,7 +13,7 @@ import { useToast } from "../ui/Toast";
 
 type Tool = "range" | "fix" | "key";
 
-const TOGGLE_DEFAULTS: ClipToggles = { zoom: true, jumpcuts: true, progress_bar: true, color_pop: true, music: true, highlight_keywords: true, loudnorm: true };
+const TOGGLE_DEFAULTS: ClipToggles = { zoom: true, jumpcuts: true, progress_bar: true, color_pop: true, music: true, highlight_keywords: true, loudnorm: true, logo_on: true };
 const TOGGLE_LABELS: { key: keyof ClipToggles; label: string; hint: string }[] = [
   { key: "jumpcuts", label: "Quitar silencios", hint: "Corta las pausas largas." },
   { key: "zoom", label: "Zoom dinámico", hint: "Cambio de plano y golpe en palabras clave." },
@@ -390,6 +390,7 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
               <legend className="mb-2 text-sm font-semibold text-ink-2">Efectos de este clip (apaga los que no quieras)</legend>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Switch checked={tg.highlight_keywords} onChange={(v) => setTg({ ...tg, highlight_keywords: v })} disabled={!capOn} label="Resaltar palabras clave" hint="Color en las palabras importantes." />
+                {data.has_logo && <Switch checked={tg.logo_on} onChange={(v) => setTg({ ...tg, logo_on: v })} label="Mostrar mi logo" hint="La marca de agua del Kit de marca." />}
                 {TOGGLE_LABELS.map((t) => (
                   <Switch key={t.key} checked={tg[t.key]} onChange={(v) => setTg({ ...tg, [t.key]: v })} label={t.label} hint={t.hint} />
                 ))}

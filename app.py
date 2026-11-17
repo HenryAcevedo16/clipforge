@@ -151,6 +151,10 @@ def _opts(**kw) -> Options:
 async def create_job(
     url: str = Form(""),
     file: Optional[UploadFile] = File(None),
+    logo: Optional[UploadFile] = File(None),
+    logo_pos: str = Form("br"),
+    logo_size: float = Form(16),
+    logo_opacity: float = Form(80),
     num_clips: int = Form(5),
     min_len: float = Form(20),
     max_len: float = Form(60),
@@ -198,7 +202,20 @@ async def create_job(
         with dest.open("wb") as f:
             shutil.copyfileobj(file.file, f)
         source = str(dest)
-    opts = _opts(num_clips=max(1, min(num_clips, 30)), min_len=min_len, max_len=max_len, aspect=aspect,
+    logo_path = ""
+    if logo and logo.filename:      # Kit de marca: el logo se guarda con el trabajo y se pone como marca de agua
+        ext = Path(logo.filename).suffix.lower()
+        if ext not in (".png", ".jpg", ".jpeg", ".webp"):
+            raise HTTPException(400, "El logo tiene que ser una imagen PNG, JPG o WebP.")
+        data = logo.file.read(5 * 1024 * 1024 + 1)
+        if len(data) > 5 * 1024 * 1024:
+            raise HTTPException(400, "El logo pesa más de 5 MB.")
+        lp = wd / ("logo" + ext)
+        lp.write_bytes(data)
+        logo_path = str(lp)
+    opts = _opts(logo_path=logo_path, logo_pos=logo_pos if logo_pos in ("tl", "tr", "bl", "br", "center") else "br",
+                 logo_size=max(4.0, min(float(logo_size), 60.0)), logo_opacity=max(5.0, min(float(logo_opacity), 100.0)),
+                 num_clips=max(1, min(num_clips, 30)), min_len=min_len, max_len=max_len, aspect=aspect,
                  layout=layout, caption_style=caption_style, words_per_line=words_per_line, font=font,
                  show_hook=show_hook, language=language or None, whisper_model=whisper_model,
                  use_ai=use_ai, ai_provider=ai_provider, smart_download=smart_download,
@@ -380,7 +397,7 @@ def delete_job(job_id: str):
 
 @app.post("/api/settings")
 def settings(gemini_key: str = Form(None), gemini_model: str = Form(None), ai_mode: str = Form(None),
-             license_key: str = Form(None), anthropic_key: str = Form(None)):
+             license_key: str = Form(None), anthropic_key: str = Form(None), ai_source: str = Form(None)):
     """Guarda la configuración de IA en config.json (solo en este equipo)."""
     changes = {}
     for k, v in (("gemini_key", gemini_key), ("gemini_model", gemini_model), ("license_key", license_key),
@@ -389,6 +406,8 @@ def settings(gemini_key: str = Form(None), gemini_model: str = Form(None), ai_mo
             changes[k] = v.strip()
     if ai_mode in ("incluida", "propia"):
         changes["ai_mode"] = ai_mode
+    if ai_source in pipeline.AI_SOURCES:
+        changes["ai_source"] = ai_source
     pipeline.save_config(**changes)
     return config()
 
@@ -397,7 +416,7 @@ def settings(gemini_key: str = Form(None), gemini_model: str = Form(None), ai_mo
 def config(refresh: int = 0):
     hw = pipeline.hw_info(refresh=bool(refresh))
     prof = pipeline.system_profile(refresh=bool(refresh))
-    return {"ai": pipeline.ai_backend(), "ai_mode": pipeline.ai_mode(), "ai_name": pipeline.backend_name(pipeline.ai_backend()),
+    return {"ai": pipeline.ai_backend(), "ai_mode": pipeline.ai_mode(), "ai_source": pipeline.ai_source(), "ai_sources": pipeline.ai_sources_status(), "ai_name": pipeline.backend_name(pipeline.ai_backend()),
             "included": pipeline.included_status(), "license": bool(pipeline.license_key()),
             "claude": pipeline.claude_backend(), "anthropic": bool(pipeline.anthropic_key()),
             "gemini": bool(pipeline.gemini_key()), "gemini_model": pipeline.gemini_model(), "dev": pipeline.dev_mode(),

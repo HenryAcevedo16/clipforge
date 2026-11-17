@@ -2,7 +2,8 @@
 import { Card } from "@heroui/react";
 import { CircleAlert, CircleCheck, CircleX, Cpu, KeyRound, MonitorCog, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { api, type Config, type DiagItem } from "@/lib/api";
+import { api, type AiSource, type Config, type DiagItem } from "@/lib/api";
+import { cn } from "../ui/cn";
 import { useResource } from "@/lib/hooks/useResource";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
@@ -11,6 +12,9 @@ import { Field, inputClass } from "../ui/Field";
 import { PageHeader } from "../ui/PageHeader";
 import { ErrorState, Skeleton } from "../ui/States";
 import { useToast } from "../ui/Toast";
+
+export const AI_LABEL: Record<AiSource, string> = { auto: "Automática", cli: "Mi suscripción de Claude", claude_api: "API de Claude", gemini: "Gemini", incluida: "IA incluida" };
+const AI_SUB: Record<AiSource, string> = { auto: "la app elige", cli: "Claude Code", claude_api: "con clave", gemini: "con clave", incluida: "licencia de NovoClip" };
 
 const TIER: Record<string, { tone: "ok" | "warn" | "neutral"; label: string }> = {
   potente: { tone: "ok", label: "Equipo potente" },
@@ -59,7 +63,7 @@ export function Settings() {
 
   const c: Config = res.data;
   const p = c.profile;
-  const mode = c.ai_mode ?? "propia";
+  const src: AiSource = c.ai_source ?? "auto";
   const tier = p ? (TIER[p.tier] ?? TIER["básico"]) : null;
 
   return (
@@ -105,19 +109,21 @@ export function Settings() {
           <Badge tone={c.ai ? "ok" : "warn"}>{c.ai ? `Activa: ${c.ai_name ?? "IA"}` : "Sin IA: se usa el método básico"}</Badge>
         </div>
 
-        <Segmented<"incluida" | "propia">
-          label="¿De dónde viene la IA?"
-          value={mode}
-          onChange={(v) => save({ ai_mode: v }, v === "incluida" ? "Usando la IA incluida." : "Usando tu propia clave.")}
-          options={[
-            { value: "incluida", label: "IA incluida", sub: "con tu suscripción" },
-            { value: "propia", label: "Mi propia clave", sub: "Gemini o Claude" },
-          ]}
+        <Segmented<AiSource>
+          label="¿Qué IA quieres usar?"
+          value={src}
+          onChange={(v) => save({ ai_source: v }, `Ahora uso: ${AI_LABEL[v]}.`)}
+          options={(Object.keys(AI_LABEL) as AiSource[]).map((k) => ({ value: k, label: AI_LABEL[k], sub: AI_SUB[k] }))}
         />
+        <p className={cn("flex items-start gap-2 text-[15px]", c.ai_sources?.[src]?.ok ? "text-ok" : "text-warn")}>
+          {c.ai_sources?.[src]?.ok ? <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden /> : <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />}
+          <span>{c.ai_sources?.[src]?.text}</span>
+        </p>
 
-        {mode === "incluida" ? (
+        {src === "cli" && <p className="text-[13px] text-ink-3">Usa Claude Code con la cuenta que tengas iniciada en este equipo (modelo y esfuerzo en NOVOCLIP_CLAUDE_MODEL / NOVOCLIP_CLAUDE_EFFORT). Úsalo solo para tus propios videos: tu suscripción es personal.</p>}
+
+        {src === "incluida" && (
           <div className="flex flex-col gap-3">
-            <p className={c.included?.ok ? "text-ok" : "text-ink-2"}>{c.included?.text}</p>
             {c.included?.source === "proxy" && (
               <form
                 className="flex flex-col gap-2 sm:flex-row sm:items-end"
@@ -135,7 +141,9 @@ export function Settings() {
               </form>
             )}
           </div>
-        ) : (
+        )}
+
+        {(src === "gemini" || src === "claude_api" || src === "auto") && (
           <form
             className="flex flex-col gap-4"
             onSubmit={(e) => {
@@ -147,15 +155,21 @@ export function Settings() {
             }}
           >
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Clave de Gemini" hint={c.gemini ? "Guardada. Pega otra para cambiarla." : "Gratis en aistudio.google.com/apikey"}>
-                {(a) => <input {...a} type="password" autoComplete="off" value={gkey} onChange={(e) => setGkey(e.target.value)} className={inputClass} />}
-              </Field>
-              <Field label="Modelo de Gemini" hint="Déjalo así si no sabes cuál poner">
-                {(a) => <input {...a} value={gmodel ?? c.gemini_model ?? ""} onChange={(e) => setGmodel(e.target.value)} placeholder="gemini-flash-latest" className={inputClass} />}
-              </Field>
-              <Field label="Clave de Claude (opcional)" hint={c.anthropic ? "Guardada. Pega otra para cambiarla." : "console.anthropic.com · se paga aparte"} className="sm:col-span-2">
-                {(a) => <input {...a} type="password" autoComplete="off" value={akey} onChange={(e) => setAkey(e.target.value)} className={inputClass} />}
-              </Field>
+              {src !== "claude_api" && (
+                <Field label="Clave de Gemini" hint={c.gemini ? "Guardada. Pega otra para cambiarla." : "Gratis en aistudio.google.com/apikey"}>
+                  {(a) => <input {...a} type="password" autoComplete="off" value={gkey} onChange={(e) => setGkey(e.target.value)} className={inputClass} />}
+                </Field>
+              )}
+              {src !== "claude_api" && (
+                <Field label="Modelo de Gemini" hint="Déjalo así si no sabes cuál poner">
+                  {(a) => <input {...a} value={gmodel ?? c.gemini_model ?? ""} onChange={(e) => setGmodel(e.target.value)} placeholder="gemini-flash-latest" className={inputClass} />}
+                </Field>
+              )}
+              {src !== "gemini" && (
+                <Field label="Clave de la API de Claude" hint={c.anthropic ? "Guardada. Pega otra para cambiarla." : "console.anthropic.com · se paga aparte"} className="sm:col-span-2">
+                  {(a) => <input {...a} type="password" autoComplete="off" value={akey} onChange={(e) => setAkey(e.target.value)} className={inputClass} />}
+                </Field>
+              )}
             </div>
             <div>
               <Button type="submit" variant="primary" loading={saving} icon={<Cpu className="size-4" aria-hidden />}>

@@ -19,6 +19,8 @@
 export interface Config {
   ai: string | boolean | null; // qué IA se usa ("gemini", "proxy", "api"...) o null si no hay
   ai_mode?: "incluida" | "propia";
+  ai_source?: AiSource; // la IA elegida en Ajustes
+  ai_sources?: Record<AiSource, { ok: boolean; text: string }>; // disponibilidad de cada opción
   ai_name?: string; // texto listo para mostrar: "Gemini · gemini-flash-latest"
   included?: { ok: boolean; source: string | null; text: string };
   license?: boolean;
@@ -148,6 +150,10 @@ export interface CreateJobInput {
   color_pop?: boolean;
   music?: boolean;
   highlight_keywords?: boolean; // resaltar palabras clave en los subtítulos
+  logo?: File | null; // Kit de marca: logo que se pone como marca de agua
+  logo_pos?: WatermarkPosition;
+  logo_size?: number; // % del ancho
+  logo_opacity?: number; // %
   loudnorm?: boolean; // igualar el volumen
   refine?: boolean; // afinar inicio y final con IA
   snap_silence?: boolean; // cortar en silencios naturales
@@ -176,6 +182,7 @@ export interface ClipEditData {
   styles: string[];
   toggles?: ClipToggles;
   show_hook?: boolean;
+  has_logo?: boolean; // el trabajo tiene un logo (Kit de marca)
 }
 /** Interruptores de edición de cada clip. */
 export interface ClipToggles {
@@ -186,6 +193,7 @@ export interface ClipToggles {
   music: boolean;
   highlight_keywords: boolean;
   loudnorm: boolean;
+  logo_on: boolean;
 }
 /** Cambios que se envían al volver a generar un clip. */
 export interface ClipEdits {
@@ -207,6 +215,7 @@ export interface ClipEdits {
   music?: boolean;
   highlight_keywords?: boolean;
   loudnorm?: boolean;
+  logo_on?: boolean;
 }
 /** Una comprobación del diagnóstico del equipo. */
 export interface DiagItem {
@@ -229,7 +238,9 @@ export interface PreviewInput {
   source_quality: "max" | "1080";
   at: number; // posición del video (0-1)
 }
+export type AiSource = "auto" | "cli" | "claude_api" | "gemini" | "incluida";
 export interface SettingsInput {
+  ai_source?: AiSource;
   ai_mode?: "incluida" | "propia";
   gemini_key?: string;
   gemini_model?: string;
