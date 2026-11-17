@@ -216,6 +216,70 @@ async def create_job(
     return {"id": job_id}
 
 
+@app.post("/api/preview")
+async def create_preview(
+    url: str = Form(""),
+    file: Optional[UploadFile] = File(None),
+    layout: str = Form("auto"),
+    aspect: str = Form("9:16"),
+    zoom: bool = Form(True),
+    jumpcuts: bool = Form(True),
+    color_pop: bool = Form(True),
+    progress_bar: bool = Form(True),
+    use_ai: bool = Form(True),
+    ai_provider: str = Form("auto"),
+    source_quality: str = Form("max"),
+    at: float = Form(0.35),
+):
+    """Muestra de ~10 s con el encuadre elegido, para verla antes de generar todos los clips."""
+    if not url and not (file and file.filename):
+        raise HTTPException(400, "Pega un enlace o sube un video para la vista previa.")
+    for old in JOBS_DIR.glob("pv_*"):      # una sola muestra a la vez: se borran las anteriores
+        shutil.rmtree(old, ignore_errors=True)
+    pid = "pv_" + uuid.uuid4().hex[:8]
+    wd = JOBS_DIR / pid
+    wd.mkdir(parents=True)
+    source = url.strip()
+    if file and file.filename:
+        dest = wd / ("origen" + Path(file.filename).suffix.lower())
+        with dest.open("wb") as f:
+            shutil.copyfileobj(file.file, f)
+        source = str(dest)
+    opts = _opts(layout=layout, aspect=aspect, zoom=zoom, jumpcuts=jumpcuts, color_pop=color_pop, progress_bar=progress_bar,
+                 use_ai=use_ai, ai_provider=ai_provider,
+                 source_quality=source_quality if source_quality in ("max", "1080") else "max")
+    JOBS[pid] = {"id": pid, "status": "queued", "progress": 0, "message": "En cola...", "log": [], "result": None,
+                 "source": url or (file.filename if file else ""), "created": time.time()}
+
+    def work() -> None:
+        job = JOBS[pid]
+
+        def progress(p: float, msg: str) -> None:
+            job["progress"], job["message"] = round(p, 1), msg
+
+        with LOCK:
+            if job.get("cancel_requested"):
+                job.update(status="cancelled", message="Cancelado.")
+                return
+            job["ident"] = pipeline.begin_job()
+            job["status"] = "running"
+            try:
+                clip = pipeline.preview_framing(source, wd, opts, at=at, progress=progress)
+                job.update(status="done", progress=100, message="Muestra lista.",
+                           result={"title": "Vista previa", "clips": [clip], "source": {}, "scene": {}})
+            except pipeline.Cancelled:
+                job.update(status="cancelled", message="Cancelado.")
+            except Exception as e:
+                traceback.print_exc()
+                job.update(status="error", message=str(e)[:600])
+            finally:
+                pipeline.end_job()
+                _cleanup_partial(wd)
+
+    threading.Thread(target=work, daemon=True).start()
+    return {"id": pid}
+
+
 @app.post("/api/jobs/{job_id}/cancel")
 def cancel_job(job_id: str):
     job = JOBS.get(job_id)
@@ -272,7 +336,7 @@ def get_job(job_id: str):
 @app.get("/api/projects")
 def list_projects():
     """Todos los trabajos (los de ahora y los guardados en disco), del más nuevo al más viejo."""
-    ids = {j for j in JOBS if "-e" not in j}
+    ids = {j for j in JOBS if "-e" not in j and not j.startswith("pv_")}
     if JOBS_DIR.exists():
         ids |= {p.name for p in JOBS_DIR.iterdir() if p.is_dir() and (p / "result.json").exists()}
     out = []

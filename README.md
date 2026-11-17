@@ -210,3 +210,6 @@ Cada clip tiene el botón **Publicar**. Eliges TikTok, YouTube Shorts, Instagram
 
 ## 🩺 Diagnóstico
 En **Ajustes → Diagnóstico → Revisar mi equipo** la app comprueba FFmpeg, el codificador por GPU, yt-dlp, Deno, curl-cffi, la transcripción (incluida la de GPU AMD), OpenCV, la IA, el espacio en disco, la música y la conexión con YouTube, Twitch, Kick y TikTok. Si algo falla, te dice cómo arreglarlo.
+
+## 👁️ Vista previa del encuadre
+En el paso 2, junto a "Encuadre", pulsa **Probar el encuadre (10 s)**: la app saca una muestra corta del video (con el encuadre, zoom y efectos elegidos, sin subtítulos) para que veas cómo quedará antes de procesar todo. "Probar otro momento" prueba otra parte. No funciona con directos.

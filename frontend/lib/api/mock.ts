@@ -137,6 +137,9 @@ function failIfModeError() {
 export const mockApi: Api = {
   kind: "mock",
 
+  async previewFraming() {
+    throw new ApiError("La vista previa solo funciona con el servidor real.");
+  },
   async getDiagnostics() {
     return [{ id: "ffmpeg", name: "FFmpeg", status: "ok" as const, detail: "simulado", fix: "" }];
   },

@@ -216,6 +216,19 @@ export interface DiagItem {
   detail: string;
   fix: string;
 }
+/** Muestra rápida del encuadre. */
+export interface PreviewInput {
+  url?: string;
+  file?: File | null;
+  layout: string;
+  aspect: string;
+  zoom: boolean;
+  jumpcuts: boolean;
+  color_pop: boolean;
+  progress_bar: boolean;
+  source_quality: "max" | "1080";
+  at: number; // posición del video (0-1)
+}
 export interface SettingsInput {
   ai_mode?: "incluida" | "propia";
   gemini_key?: string;
@@ -317,6 +330,7 @@ export interface Api {
   cancelJob(id: string): Promise<void>;
   saveSettings(s: SettingsInput): Promise<Config>;
   getDiagnostics(): Promise<DiagItem[]>;
+  previewFraming(input: PreviewInput): Promise<{ id: string }>;
   getClipEdit(jobId: string, index: number): Promise<ClipEditData>;
   renderClip(jobId: string, index: number, edits: ClipEdits): Promise<{ id: string }>;
   deleteClip(jobId: string, index: number): Promise<void>;

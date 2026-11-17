@@ -1,6 +1,6 @@
 "use client";
 import { Card, Chip, Tabs } from "@heroui/react";
-import { ArrowLeft, ArrowRight, Captions, ChevronDown, FileVideo, Film, Link2, Scissors, Send, Sparkles, Star, Upload, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Captions, ChevronDown, FileVideo, Film, Link2, Eye, Scissors, Send, Sparkles, Star, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, type BrandTemplate, type ClipResult, type Job, type SubtitleStyleId } from "@/lib/api";
@@ -12,6 +12,7 @@ import { detectPlatform, SUPPORTED_TEXT } from "@/lib/platform";
 import { PlatformPill } from "../ui/PlatformPill";
 import { ClipEditor } from "../projects/ClipEditor";
 import { PublishDialog } from "../projects/PublishDialog";
+import { FramingPreview } from "./FramingPreview";
 import { ClipPreview } from "../brand/ClipPreview";
 import { Button } from "../ui/Button";
 import { Segmented, Switch } from "../ui/Controls";
@@ -81,6 +82,7 @@ export function HomeFlow() {
   const [sending, setSending] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
   const [editing, setEditing] = useState<number | null>(null);
+  const [previewing, setPreviewing] = useState(false);
   const refreshJob = useCallback(async () => {
     if (!jobId0.current) return;
     try {
@@ -415,6 +417,12 @@ export function HomeFlow() {
             <Card className="gap-5 border border-line p-5">
               <h3 className="text-lg font-extrabold">Edición</h3>
               <Segmented label="Encuadre" value={s.layout} onChange={(v) => setS({ ...s, layout: v })} options={LAYOUT_OPTIONS} />
+              <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-raised-2/40 p-3.5">
+                <Button size="sm" onClick={() => setPreviewing(true)} icon={<Eye className="size-4" aria-hidden />}>
+                  Probar el encuadre (10 s)
+                </Button>
+                <p className="min-w-0 flex-1 text-[13px] text-ink-3">Mira cómo queda una muestra corta antes de procesar el video entero.</p>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Switch checked={s.jumpcuts} onChange={(v) => setS({ ...s, jumpcuts: v })} label="Quitar silencios" hint="Corta las pausas largas: ritmo más rápido." />
                 <Switch checked={s.zoom} onChange={(v) => setS({ ...s, zoom: v })} label="Zoom dinámico" hint="Cambio de plano en cada corte y golpe en las palabras clave." />
@@ -628,6 +636,13 @@ export function HomeFlow() {
       )}
 
       {step === 4 && job?.result && <ResultStep job={job} saving={saving} onSend={() => sendToProjects("project")} onAgain={reset} onEdit={job.result.live ? undefined : setEditing} />}
+
+      {previewing && (
+        <FramingPreview
+          onClose={() => setPreviewing(false)}
+          input={{ url: mode === "url" ? (/^https?:\/\//i.test(url.trim()) ? url.trim() : "https://" + url.trim()) : undefined, file: mode === "file" ? file : null, layout: s.layout, aspect: s.aspect, zoom: s.zoom, jumpcuts: s.jumpcuts, color_pop: s.colorPop, progress_bar: s.progressBar, source_quality: s.quality }}
+        />
+      )}
 
       {job && editing !== null && <ClipEditor jobId={job.id} index={editing} onClose={() => setEditing(null)} onChanged={refreshJob} />}
     </div>

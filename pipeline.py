@@ -3780,3 +3780,65 @@ def diagnostics(jobs_dir: Optional[Path] = None) -> list:
         add("net_" + name.lower(), f"Conexión con {name}", "ok" if res[host] else "bad",
             "llega" if res[host] else "No se puede conectar.", "" if res[host] else "Revisa tu internet, VPN o antivirus.")
     return out
+
+
+# --------------------------------------------------------------------------- #
+# Vista previa rápida del encuadre (10 s) antes de generar todos los clips
+# --------------------------------------------------------------------------- #
+def preview_framing(source: str, workdir: Path, opts: Options, at: float = 0.35, seconds: float = 10.0,
+                    progress: ProgressFn = _noop) -> dict:
+    """Crea un clip de muestra de ~10 s con el encuadre y los efectos elegidos (sin subtítulos ni IA de selección),
+    para ver cómo quedará antes de procesar el video entero. `at` = posición del video (0-1)."""
+    global _AI_PROVIDER
+    _AI_PROVIDER = opts.ai_provider if opts.ai_provider in ("auto", "claude", "gemini") else "auto"
+    o = resolve_auto(replace(opts, caption_style="none", show_hook=False, music=False, review=False, loudnorm=False))
+    workdir.mkdir(parents=True, exist_ok=True)
+    outdir = workdir / "clips"
+    outdir.mkdir(exist_ok=True)
+    at = min(0.95, max(0.02, float(at)))
+    is_url = bool(re.match(r"^https?://", source))
+    part: Optional[Path] = None
+    if is_url:
+        import yt_dlp
+        progress(5, "Mirando el video...")
+        q = {"quiet": True, "no_warnings": True, "noplaylist": True}
+        if o.cookies_from_browser:
+            q["cookiesfrombrowser"] = (o.cookies_from_browser,)
+        with yt_dlp.YoutubeDL(q) as y:
+            info = y.extract_info(source, download=False)
+        if info.get("is_live"):
+            raise RuntimeError("La vista previa no funciona con directos. Genera los clips y edita el encuadre de cada uno.")
+        dur = float(info.get("duration") or 0)
+        if dur < seconds + 2:
+            raise RuntimeError("No pude saber la duración de este video para sacar una muestra.")
+        t0 = max(0.0, min(dur * at, dur - seconds - 2))
+        progress(15, f"Descargando una muestra de {seconds:.0f} s (minuto {t0 / 60:.1f})...")
+        part, _ = download(source, workdir, o, progress, section=(t0, t0 + seconds + 2), stem="muestra",
+                           label="Descargando la muestra...")
+        src, c_start = part, 1.0
+    else:
+        src = Path(source)
+        dur = float(probe(src)["duration"])
+        if dur < 2:
+            raise RuntimeError("El video es demasiado corto para una muestra.")
+        seconds = min(seconds, max(1.0, dur - 0.5))
+        t0 = max(0.0, min(dur * at, dur - seconds - 0.2))
+        c_start = t0
+    meta = probe(src)
+    clip = Clip(index=1, start=c_start, end=c_start + seconds, title="Vista previa del encuadre")
+    scene = None
+    if o.layout == "auto" and o.use_ai and ai_backend():
+        try:
+            progress(35, "La IA mira qué tipo de video es...")
+            scene = classify_video(src, workdir, o, float(meta["duration"])) or None
+        except Cancelled:
+            raise
+        except Exception:   # noqa: BLE001
+            scene = None
+    progress(45, "Creando la muestra...")
+    c = render_clip(src, clip, {"language": None, "segments": []}, o, outdir, meta, progress, 45, 98, scene=scene)
+    if part:
+        part.unlink(missing_ok=True)
+    progress(100, "Muestra lista.")
+    return dict(asdict(c), duration=round(c.out_duration or c.duration, 2), rev=int(time.time()),
+                moment=round(t0, 1), scene_type=(scene or {}).get("tipo"))

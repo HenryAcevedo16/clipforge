@@ -47,6 +47,13 @@ export const realApi: Api = {
 
   getConfig: () => request<Config>("/api/config"),
   getDiagnostics: () => request("/api/diagnostics"),
+  previewFraming(input) {
+    const fd = new FormData();
+    if (input.url) fd.set("url", input.url);
+    if (input.file) fd.set("file", input.file);
+    for (const k of ["layout", "aspect", "zoom", "jumpcuts", "color_pop", "progress_bar", "source_quality", "at"] as const) fd.set(k, String(input[k]));
+    return request<{ id: string }>("/api/preview", { method: "POST", body: fd });
+  },
 
   createJob(input: CreateJobInput) {
     const fd = new FormData();
