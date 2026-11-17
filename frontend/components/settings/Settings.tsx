@@ -1,8 +1,8 @@
 "use client";
 import { Card } from "@heroui/react";
-import { Cpu, KeyRound, MonitorCog, Sparkles } from "lucide-react";
+import { CircleAlert, CircleCheck, CircleX, Cpu, KeyRound, MonitorCog, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { api, type Config } from "@/lib/api";
+import { api, type Config, type DiagItem } from "@/lib/api";
 import { useResource } from "@/lib/hooks/useResource";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
@@ -65,6 +65,8 @@ export function Settings() {
   return (
     <div>
       <PageHeader title="Ajustes" description="Qué IA usa la app y cómo aprovecha tu equipo." />
+
+      <Diagnostics />
 
       <Card className="mb-5 gap-4 border border-line p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-2.5">
@@ -165,5 +167,61 @@ export function Settings() {
         )}
       </Card>
     </div>
+  );
+}
+
+
+const DIAG_ICON = {
+  ok: <CircleCheck className="size-5 shrink-0 text-ok" aria-label="Bien" />,
+  warn: <CircleAlert className="size-5 shrink-0 text-warn" aria-label="Aviso" />,
+  bad: <CircleX className="size-5 shrink-0 text-bad" aria-label="Problema" />,
+} as const;
+
+/** Revisa que todo lo necesario esté instalado (FFmpeg, yt-dlp, GPU, IA, conexión con cada red) y dice cómo arreglar lo que falte. */
+function Diagnostics() {
+  const toast = useToast();
+  const [items, setItems] = useState<DiagItem[] | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const run = async () => {
+    setBusy(true);
+    try {
+      setItems(await api.getDiagnostics());
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "No pude hacer el diagnóstico.", "bad");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const bad = items?.filter((i) => i.status === "bad").length ?? 0;
+  const warn = items?.filter((i) => i.status === "warn").length ?? 0;
+  return (
+    <Card className="mb-5 gap-4 border border-line p-5 sm:p-6">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <ShieldCheck className="size-5 text-accent-hi" aria-hidden />
+        <h2 className="text-lg font-bold">Diagnóstico</h2>
+        {items && <Badge tone={bad ? "bad" : warn ? "warn" : "ok"}>{bad ? `${bad} problema${bad > 1 ? "s" : ""}` : warn ? `${warn} aviso${warn > 1 ? "s" : ""}` : "Todo en orden"}</Badge>}
+        <Button size="sm" variant="primary" onClick={run} loading={busy} className="ml-auto">
+          {items ? "Revisar otra vez" : "Revisar mi equipo"}
+        </Button>
+      </div>
+      {!items ? (
+        <p className="text-ink-2">Comprueba FFmpeg, las descargas, la GPU, la IA y la conexión con YouTube, Twitch, Kick y TikTok. Si algo falla, te dice cómo arreglarlo.</p>
+      ) : (
+        <ul className="grid gap-2">
+          {items.map((i) => (
+            <li key={i.id} className="flex items-start gap-3 rounded-2xl bg-raised-2/60 px-4 py-3">
+              {DIAG_ICON[i.status]}
+              <div className="min-w-0">
+                <p className="font-bold">{i.name}</p>
+                <p className="text-sm text-ink-2 [overflow-wrap:anywhere]">{i.detail}</p>
+                {i.fix && <p className="mt-1 text-[13px] text-ink-3 [overflow-wrap:anywhere]">Cómo arreglarlo: <code className="rounded bg-black/40 px-1.5 py-0.5 text-ink-2">{i.fix}</code></p>}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }

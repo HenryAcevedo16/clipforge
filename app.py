@@ -341,6 +341,11 @@ def config(refresh: int = 0):
             "aspects": list(pipeline.ASPECTS)}
 
 
+@app.get("/api/diagnostics")
+def diagnostics():
+    return pipeline.diagnostics(JOBS_DIR)
+
+
 @app.get("/files/{job_id}/{name}")
 def get_file(job_id: str, name: str, download: int = 0):
     p = (JOBS_DIR / job_id / "clips" / name).resolve()

@@ -137,6 +137,9 @@ function failIfModeError() {
 export const mockApi: Api = {
   kind: "mock",
 
+  async getDiagnostics() {
+    return [{ id: "ffmpeg", name: "FFmpeg", status: "ok" as const, detail: "simulado", fix: "" }];
+  },
   async getConfig() {
     await wait();
     failIfModeError();

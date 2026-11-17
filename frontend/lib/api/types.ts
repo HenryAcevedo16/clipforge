@@ -208,6 +208,14 @@ export interface ClipEdits {
   highlight_keywords?: boolean;
   loudnorm?: boolean;
 }
+/** Una comprobación del diagnóstico del equipo. */
+export interface DiagItem {
+  id: string;
+  name: string;
+  status: "ok" | "warn" | "bad";
+  detail: string;
+  fix: string;
+}
 export interface SettingsInput {
   ai_mode?: "incluida" | "propia";
   gemini_key?: string;
@@ -308,6 +316,7 @@ export interface Api {
   getJob(id: string): Promise<Job>;
   cancelJob(id: string): Promise<void>;
   saveSettings(s: SettingsInput): Promise<Config>;
+  getDiagnostics(): Promise<DiagItem[]>;
   getClipEdit(jobId: string, index: number): Promise<ClipEditData>;
   renderClip(jobId: string, index: number, edits: ClipEdits): Promise<{ id: string }>;
   deleteClip(jobId: string, index: number): Promise<void>;

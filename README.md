@@ -207,3 +207,6 @@ Con IA activa, si es un stream la app divide sola: streamer arriba (usa el recua
 
 ## 📤 Publicar (asistido, sin permisos ni pagos)
 Cada clip tiene el botón **Publicar**. Eliges TikTok, YouTube Shorts, Instagram Reels, Facebook Reels o X: se abre en una ventana nueva su página de subir video, se descarga el clip y se copia el texto (descripción + hashtags). Solo arrastras el video y pegas. Funciona con varias cuentas: usa la sesión que tengas abierta en tu navegador.
+
+## 🩺 Diagnóstico
+En **Ajustes → Diagnóstico → Revisar mi equipo** la app comprueba FFmpeg, el codificador por GPU, yt-dlp, Deno, curl-cffi, la transcripción (incluida la de GPU AMD), OpenCV, la IA, el espacio en disco, la música y la conexión con YouTube, Twitch, Kick y TikTok. Si algo falla, te dice cómo arreglarlo.

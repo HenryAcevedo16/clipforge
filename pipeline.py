@@ -3679,3 +3679,104 @@ def process_live(source: str, workdir: Path, opts: Options, progress: ProgressFn
 def _fmt_clock(t: float) -> str:
     t = int(max(0, t))
     return f"{t // 3600}:{t % 3600 // 60:02d}:{t % 60:02d}" if t >= 3600 else f"{t // 60}:{t % 60:02d}"
+
+
+# --------------------------------------------------------------------------- #
+# Diagnóstico: comprueba que todo lo necesario está instalado y funciona
+# --------------------------------------------------------------------------- #
+def diagnostics(jobs_dir: Optional[Path] = None) -> list:
+    """Lista de comprobaciones [{id, name, status: ok|warn|bad, detail, fix}] para la pantalla de Ajustes."""
+    import socket
+    import concurrent.futures as cf
+    out: list = []
+
+    def add(id_, name, status, detail, fix=""):
+        out.append({"id": id_, "name": name, "status": status, "detail": detail, "fix": fix})
+
+    def cmd(args: list, timeout: int = 15) -> str:
+        try:
+            r = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+            return (r.stdout or "") + (r.stderr or "")
+        except Exception as e:   # noqa: BLE001
+            return f"__error__ {e}"
+
+    # ffmpeg
+    ff = shutil.which("ffmpeg")
+    if not ff:
+        add("ffmpeg", "FFmpeg", "bad", "No está instalado: sin él no se pueden crear los clips.", "winget install Gyan.FFmpeg  (y reinicia la app)")
+    else:
+        ver = (cmd(["ffmpeg", "-version"]).splitlines() or ["?"])[0][:60]
+        enc = cmd(["ffmpeg", "-hide_banner", "-encoders"])
+        flt = cmd(["ffmpeg", "-hide_banner", "-filters"])
+        miss = [n for n, ok in (("libx264", "libx264" in enc), ("subtítulos (libass)", " ass " in flt or "subtitles" in flt)) if not ok]
+        if miss:
+            add("ffmpeg", "FFmpeg", "bad", f"{ver}. Le falta: {', '.join(miss)}.", "Instala la versión completa (gyan.dev 'full').")
+        else:
+            add("ffmpeg", "FFmpeg", "ok", ver)
+        gpu = [n for n in ("h264_nvenc", "h264_amf", "h264_qsv") if n in enc]
+        add("encoder", "Codificador por GPU", "ok" if gpu else "warn",
+            ", ".join(gpu) if gpu else "No hay codificador por GPU disponible: se usa el procesador (más lento).",
+            "" if gpu else "Instala los últimos drivers de tu tarjeta gráfica.")
+    if not shutil.which("ffprobe"):
+        add("ffprobe", "FFprobe", "bad", "No se encuentra ffprobe (viene con FFmpeg).", "Reinstala FFmpeg completo.")
+
+    # yt-dlp y el motor de JavaScript que pide YouTube
+    try:
+        import yt_dlp
+        add("ytdlp", "yt-dlp (descargas)", "ok", f"versión {yt_dlp.version.__version__}")
+    except Exception:   # noqa: BLE001
+        add("ytdlp", "yt-dlp (descargas)", "bad", "No está instalado.", ".venv\\Scripts\\pip install -U \"yt-dlp[default,curl-cffi]\"")
+    js = shutil.which("deno") or shutil.which("node")
+    add("js", "Motor de YouTube (Deno)", "ok" if js else "warn",
+        js or "No se encontró Deno ni Node: YouTube puede fallar al descargar o abrir directos.", "" if js else "winget install DenoLand.Deno  (y reinicia la app)")
+    try:
+        import curl_cffi  # noqa: F401
+        add("curlcffi", "Kick y TikTok (curl-cffi)", "ok", "instalado")
+    except Exception:   # noqa: BLE001
+        add("curlcffi", "Kick y TikTok (curl-cffi)", "warn", "No está instalado: Kick y TikTok pueden bloquear la descarga.", ".venv\\Scripts\\pip install -U curl-cffi")
+
+    # transcripción
+    try:
+        import faster_whisper  # noqa: F401
+        add("whisper", "Transcripción (faster-whisper)", "ok", "instalado")
+    except Exception:   # noqa: BLE001
+        add("whisper", "Transcripción (faster-whisper)", "bad", "No está instalado.", ".venv\\Scripts\\pip install -r requirements.txt")
+    wc = whispercpp_exe()
+    add("whispercpp", "Transcripción con GPU AMD (Vulkan)", "ok" if wc else "warn",
+        wc or "No está compilado: se transcribe con el procesador (más lento).", "" if wc else "Ejecuta compilar_whisper_vulkan.bat")
+    try:
+        add("opencv", "Visión (OpenCV)", "ok", f"versión {cv2.__version__}")
+    except Exception as e:   # noqa: BLE001
+        add("opencv", "Visión (OpenCV)", "bad", str(e)[:80], "pip install \"opencv-python-headless<5\"")
+
+    # IA
+    b = ai_backend()
+    add("ai", "Inteligencia artificial", "ok" if b else "warn", backend_name(b) if b else "Sin IA: se usa el método básico para elegir clips.",
+        "" if b else "Pega tu clave de Gemini o Claude en Ajustes → IA.")
+
+    # disco, música y fuentes
+    try:
+        free = shutil.disk_usage(str(jobs_dir or ROOT)).free / 1e9
+        add("disk", "Espacio en disco", "ok" if free > 10 else ("warn" if free > 3 else "bad"), f"{free:.0f} GB libres",
+            "" if free > 10 else "Libera espacio: los videos en 4K pesan mucho.")
+    except Exception:   # noqa: BLE001
+        pass
+    songs = [p for p in MUSIC_DIR.glob("*") if p.suffix.lower() in (".mp3", ".m4a", ".wav", ".ogg")] if MUSIC_DIR.exists() else []
+    add("music", "Música de fondo", "ok" if songs else "warn", f"{len(songs)} canciones en music/" if songs else "La carpeta music/ está vacía: la opción Música no hará nada.",
+        "" if songs else "Pon canciones libres de derechos (.mp3) en la carpeta music/.")
+
+    # conexión con cada plataforma
+    def reach(host: str):
+        try:
+            socket.create_connection((host, 443), timeout=4).close()
+            return host, True
+        except Exception:   # noqa: BLE001
+            return host, False
+
+    nets = {"www.youtube.com": "YouTube", "www.twitch.tv": "Twitch", "kick.com": "Kick", "www.tiktok.com": "TikTok"}
+    with cf.ThreadPoolExecutor(4) as ex:
+        res = dict(ex.map(reach, nets))
+    for host, name in nets.items():
+        add("net_" + name.lower(), f"Conexión con {name}", "ok" if res[host] else "bad",
+            "llega" if res[host] else "No se puede conectar.", "" if res[host] else "Revisa tu internet, VPN o antivirus.")
+    return out

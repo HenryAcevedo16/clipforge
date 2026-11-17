@@ -46,6 +46,7 @@ export const realApi: Api = {
   kind: "real",
 
   getConfig: () => request<Config>("/api/config"),
+  getDiagnostics: () => request("/api/diagnostics"),
 
   createJob(input: CreateJobInput) {
     const fd = new FormData();
