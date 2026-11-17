@@ -1,0 +1,6 @@
+{
+  "_comentario": "Copia este archivo como ia_incluida.json. Opción A (provisional): pon tu clave de Gemini en gemini_key. Opción B (recomendada para vender): pon la dirección de tu servidor de IA en proxy_url y deja gemini_key vacío.",
+  "gemini_key": "",
+  "gemini_model": "gemini-flash-latest",
+  "proxy_url": ""
+}

@@ -1,0 +1,169 @@
+"use client";
+import { Card } from "@heroui/react";
+import { Cpu, KeyRound, MonitorCog, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { api, type Config } from "@/lib/api";
+import { useResource } from "@/lib/hooks/useResource";
+import { Badge } from "../ui/Badge";
+import { Button } from "../ui/Button";
+import { Segmented } from "../ui/Controls";
+import { Field, inputClass } from "../ui/Field";
+import { PageHeader } from "../ui/PageHeader";
+import { ErrorState, Skeleton } from "../ui/States";
+import { useToast } from "../ui/Toast";
+
+const TIER: Record<string, { tone: "ok" | "warn" | "neutral"; label: string }> = {
+  potente: { tone: "ok", label: "Equipo potente" },
+  medio: { tone: "warn", label: "Equipo medio" },
+  básico: { tone: "neutral", label: "Equipo básico" },
+};
+
+/** Ajustes: de dónde viene la IA (incluida o clave propia) y qué usa la app según los componentes del equipo. */
+export function Settings() {
+  const res = useResource(() => api.getConfig(), []);
+  const toast = useToast();
+  const [gkey, setGkey] = useState("");
+  const [gmodel, setGmodel] = useState<string | null>(null);
+  const [akey, setAkey] = useState("");
+  const [lic, setLic] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const save = async (s: Parameters<typeof api.saveSettings>[0], ok: string) => {
+    setSaving(true);
+    try {
+      const c = await api.saveSettings(s);
+      res.set(c);
+      toast(ok);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "No se pudo guardar.", "bad");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (res.loading)
+    return (
+      <div>
+        <PageHeader title="Ajustes" />
+        <Skeleton className="mb-5 h-40" />
+        <Skeleton className="h-64" />
+      </div>
+    );
+  if (res.error || !res.data)
+    return (
+      <div>
+        <PageHeader title="Ajustes" />
+        <ErrorState message={res.error ?? "Error desconocido"} onRetry={() => res.reload()} />
+      </div>
+    );
+
+  const c: Config = res.data;
+  const p = c.profile;
+  const mode = c.ai_mode ?? "propia";
+  const tier = p ? (TIER[p.tier] ?? TIER["básico"]) : null;
+
+  return (
+    <div>
+      <PageHeader title="Ajustes" description="Qué IA usa la app y cómo aprovecha tu equipo." />
+
+      <Card className="mb-5 gap-4 border border-line p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <MonitorCog className="size-5 text-accent-hi" aria-hidden />
+          <h2 className="text-lg font-bold">Tu equipo</h2>
+          {tier && <Badge tone={tier.tone}>{tier.label}</Badge>}
+        </div>
+        {p ? (
+          <>
+            <p className="text-ink-2 [overflow-wrap:anywhere]">{p.summary}</p>
+            <dl className="grid gap-3 text-[15px] sm:grid-cols-3">
+              <div className="rounded-2xl bg-raised-2 p-3.5">
+                <dt className="text-sm text-ink-3">Transcribe con</dt>
+                <dd className="mt-0.5 font-bold">{p.transcribe_on}</dd>
+              </div>
+              <div className="rounded-2xl bg-raised-2 p-3.5">
+                <dt className="text-sm text-ink-3">Crea los videos con</dt>
+                <dd className="mt-0.5 font-bold">{p.render_on}</dd>
+              </div>
+              <div className="rounded-2xl bg-raised-2 p-3.5">
+                <dt className="text-sm text-ink-3">Precisión elegida</dt>
+                <dd className="mt-0.5 font-bold">{p.recommended.whisper_model}</dd>
+              </div>
+            </dl>
+            <p className="text-[13px] text-ink-3">La app lee tu procesador, tu memoria y tu tarjeta gráfica y elige sola lo más rápido que tu equipo aguanta.</p>
+          </>
+        ) : (
+          <p className="text-ink-3">No se pudieron leer los componentes de este equipo.</p>
+        )}
+      </Card>
+
+      <Card className="gap-5 border border-line p-5 sm:p-6">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Sparkles className="size-5 text-accent-hi" aria-hidden />
+          <h2 className="text-lg font-bold">Inteligencia artificial</h2>
+          <Badge tone={c.ai ? "ok" : "warn"}>{c.ai ? `Activa: ${c.ai_name ?? "IA"}` : "Sin IA: se usa el método básico"}</Badge>
+        </div>
+
+        <Segmented<"incluida" | "propia">
+          label="¿De dónde viene la IA?"
+          value={mode}
+          onChange={(v) => save({ ai_mode: v }, v === "incluida" ? "Usando la IA incluida." : "Usando tu propia clave.")}
+          options={[
+            { value: "incluida", label: "IA incluida", sub: "con tu suscripción" },
+            { value: "propia", label: "Mi propia clave", sub: "Gemini o Claude" },
+          ]}
+        />
+
+        {mode === "incluida" ? (
+          <div className="flex flex-col gap-3">
+            <p className={c.included?.ok ? "text-ok" : "text-ink-2"}>{c.included?.text}</p>
+            {c.included?.source === "proxy" && (
+              <form
+                className="flex flex-col gap-2 sm:flex-row sm:items-end"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (lic.trim()) save({ license_key: lic }, "Licencia guardada.").then(() => setLic(""));
+                }}
+              >
+                <Field label="Clave de licencia de NovoClip" className="flex-1" hint={c.license ? "Ya hay una licencia guardada. Pega otra para cambiarla." : undefined}>
+                  {(a) => <input {...a} type="password" autoComplete="off" value={lic} onChange={(e) => setLic(e.target.value)} className={inputClass} />}
+                </Field>
+                <Button type="submit" variant="primary" loading={saving} icon={<KeyRound className="size-4" aria-hidden />}>
+                  Activar
+                </Button>
+              </form>
+            )}
+          </div>
+        ) : (
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              save({ ...(gkey.trim() && { gemini_key: gkey }), ...(akey.trim() && { anthropic_key: akey }), gemini_model: gmodel ?? c.gemini_model ?? "" }, "Claves guardadas.").then(() => {
+                setGkey("");
+                setAkey("");
+              });
+            }}
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Clave de Gemini" hint={c.gemini ? "Guardada. Pega otra para cambiarla." : "Gratis en aistudio.google.com/apikey"}>
+                {(a) => <input {...a} type="password" autoComplete="off" value={gkey} onChange={(e) => setGkey(e.target.value)} className={inputClass} />}
+              </Field>
+              <Field label="Modelo de Gemini" hint="Déjalo así si no sabes cuál poner">
+                {(a) => <input {...a} value={gmodel ?? c.gemini_model ?? ""} onChange={(e) => setGmodel(e.target.value)} placeholder="gemini-flash-latest" className={inputClass} />}
+              </Field>
+              <Field label="Clave de Claude (opcional)" hint={c.anthropic ? "Guardada. Pega otra para cambiarla." : "console.anthropic.com · se paga aparte"} className="sm:col-span-2">
+                {(a) => <input {...a} type="password" autoComplete="off" value={akey} onChange={(e) => setAkey(e.target.value)} className={inputClass} />}
+              </Field>
+            </div>
+            <div>
+              <Button type="submit" variant="primary" loading={saving} icon={<Cpu className="size-4" aria-hidden />}>
+                Guardar claves
+              </Button>
+            </div>
+            <p className="text-[13px] text-ink-3">Las claves se guardan solo en este equipo (archivo config.json) y nunca salen de él, salvo hacia Google o Anthropic cuando se usa la IA.</p>
+          </form>
+        )}
+      </Card>
+    </div>
+  );
+}

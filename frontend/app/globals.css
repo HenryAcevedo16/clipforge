@@ -1,0 +1,145 @@
+@import "@heroui/styles";
+
+/*
+  NovoClip · rediseño inspirado en OpusClip + componentes de HeroUI v3.
+  Base casi negra con matiz violeta, tarjetas redondeadas, acento violeta→azul (solo en botones, bordes y brillos).
+  HeroUI aporta los componentes y sus variables (--background, --surface, --accent…); aquí se afinan al modo oscuro de NovoClip.
+*/
+
+@theme {
+  /* Nombres propios que usa el código de NovoClip. Los de HeroUI (accent, surface, muted, border…) vienen de @heroui/styles. */
+  --color-ground: var(--background);
+  --color-shell: oklch(0.148 0.012 285);
+  --color-raised: var(--surface);
+  --color-raised-2: var(--surface-secondary);
+  --color-line: var(--border);
+  --color-line-2: oklch(0.4 0.02 285);
+
+  --color-ink: oklch(0.97 0.004 285);
+  --color-ink-2: oklch(0.82 0.01 285);
+  --color-ink-3: oklch(0.72 0.014 285);
+
+  --color-accent-hi: oklch(0.82 0.1 290);
+  --color-accent-strong: var(--accent-hover);
+
+  --color-ok: oklch(0.78 0.16 160);
+  --color-ok-soft: oklch(0.27 0.06 160);
+  --color-warn: oklch(0.83 0.15 85);
+  --color-warn-soft: oklch(0.29 0.06 85);
+  --color-bad: oklch(0.72 0.17 22);
+  --color-bad-soft: oklch(0.28 0.08 22);
+
+  --font-sans: "Manrope Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Manrope Variable", system-ui, sans-serif;
+  --font-num: "Manrope Variable", system-ui, sans-serif;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root {
+  --rail-w: 16rem;
+  --bar-h: 5.5rem;
+  --brand-gradient: linear-gradient(135deg, oklch(0.56 0.24 300) 0%, oklch(0.53 0.2 268) 100%);
+  --brand-glow: oklch(0.6 0.22 290 / 0.35);
+}
+
+/* Modo oscuro de NovoClip sobre las variables de HeroUI */
+.dark,
+[data-theme="dark"] {
+  --background: oklch(0.125 0.01 285);
+  --surface: oklch(0.172 0.014 285);
+  --surface-secondary: oklch(0.21 0.016 285);
+  --surface-tertiary: oklch(0.25 0.018 285);
+  --overlay: oklch(0.19 0.016 285);
+  --muted: oklch(0.72 0.014 285);
+  --default: oklch(0.27 0.018 285);
+  --border: oklch(0.3 0.016 285);
+  --separator: oklch(0.26 0.014 285);
+  --field-background: oklch(0.172 0.014 285);
+  --field-border: oklch(0.32 0.018 285);
+  --segment: oklch(0.3 0.02 285);
+  --accent: oklch(0.55 0.23 285);
+  --accent-foreground: oklch(0.99 0 0);
+  --focus: oklch(0.78 0.12 290);
+  --radius: 0.75rem;
+}
+
+html {
+  background: var(--background);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+p { text-wrap: pretty; }
+
+::selection { background: var(--accent); color: #fff; }
+
+* { scrollbar-width: thin; scrollbar-color: var(--color-line-2) transparent; }
+
+input[type="date"], input[type="time"], input[type="number"] { font-variant-numeric: tabular-nums; }
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(0.85); cursor: pointer; }
+
+.tnum { font-variant-numeric: tabular-nums; }
+.num { font-family: var(--font-num); font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+button, a, input, select, textarea, summary, [role="button"] { touch-action: manipulation; }
+
+/* Superficies de NovoClip */
+.brand-bg { background: var(--brand-gradient); }
+.glow-ring {
+  position: relative;
+  border-radius: 1.25rem;
+  background: linear-gradient(var(--surface), var(--surface)) padding-box, var(--brand-gradient) border-box;
+  border: 1.5px solid transparent;
+  box-shadow: 0 0 0 0 transparent, 0 18px 60px -18px var(--brand-glow);
+}
+.hero-aurora {
+  background:
+    radial-gradient(60% 55% at 50% 0%, oklch(0.5 0.2 290 / 0.28) 0%, transparent 70%),
+    radial-gradient(40% 40% at 85% 10%, oklch(0.55 0.2 262 / 0.18) 0%, transparent 70%);
+}
+
+@keyframes rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sweep { to { transform: rotate(360deg); } }
+@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+
+.anim-rise { animation: rise-in 280ms var(--ease-out) both; }
+.anim-fade { animation: fade-in 200ms var(--ease-out) both; }
+
+.skeleton-box {
+  background: linear-gradient(100deg, var(--surface) 30%, var(--surface-secondary) 50%, var(--surface) 70%);
+  background-size: 250% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton-box { animation: none; }
+}

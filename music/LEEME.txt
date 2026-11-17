@@ -1,0 +1,3 @@
+Pon aquí canciones .mp3 / .m4a / .wav SIN copyright (por ejemplo de la Biblioteca de audio de YouTube,
+Pixabay Music o Uppbeat). NovoClip elige una al azar para cada clip y baja su volumen
+automáticamente cuando alguien habla. Si la carpeta está vacía, los clips salen sin música.

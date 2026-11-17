@@ -1,4 +1,4 @@
-yt-dlp>=2025.1.1
+yt-dlp[default,curl-cffi]>=2025.1.1
 faster-whisper>=1.0.0
 av>=14,<17  # av 19 rompe faster-whisper (metadata_errors)
 opencv-python-headless>=4.9,<5
@@ -7,3 +7,4 @@ uvicorn>=0.29
 python-multipart>=0.0.9
 anthropic>=0.60
 pydantic>=2
+google-genai>=1.0

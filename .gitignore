@@ -22,3 +22,25 @@ fonts/*
 # Claves y configuración local
 .env
 *.log
+
+# Música propia
+music/*
+!music/LEEME.txt
+
+# whisper.cpp compilado con Vulkan
+bin/
+build_whisper/
+
+# Claves guardadas desde la app
+config.json
+
+# Clave incluida del dueño y datos del servidor
+ia_incluida.json
+servidor_ia/uso.sqlite3
+
+# Copias y compilados locales
+pipeline.py.bak
+web_backup/
+frontend/node_modules/
+frontend/.next/
+frontend/out/

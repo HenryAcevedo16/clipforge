@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ClipForge</title>
+<title>NovoClip</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
 <style>
@@ -23,6 +23,9 @@
   .hero input:focus{outline:2px solid var(--acc);border-color:transparent}
   button.go{background:var(--acc);color:#fff;border:0;border-radius:12px;padding:0 26px;font-weight:700;font-size:16px;cursor:pointer;min-height:52px}
   button.go:disabled{opacity:.5;cursor:wait}
+  button.cancel{display:none;background:transparent;color:#ff8a8a;border:1px solid #7a2a2a;border-radius:10px;padding:8px 16px;font-weight:600;cursor:pointer;margin-top:12px}
+  button.cancel:hover{background:#2a1212}
+  button.cancel:disabled{opacity:.5;cursor:wait}
   .or{color:var(--mut);font-size:13px;margin:12px 0 0}
   .or label{color:var(--txt);text-decoration:underline;cursor:pointer}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-top:20px}
@@ -59,6 +62,38 @@
   .acts{display:flex;gap:8px;margin-top:auto}
   .acts a,.acts button{flex:1;text-align:center;border-radius:10px;padding:9px;font-weight:600;font-size:13px;text-decoration:none;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--txt)}
   .acts a.dl{background:var(--acc);border-color:var(--acc);color:#fff}
+  .aibox{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .aitabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .aitabs label{flex:1;min-width:220px;border:1px solid var(--line);border-radius:10px;padding:10px;cursor:pointer;background:var(--panel)}
+  .aitabs label span{display:block;font-size:12px;color:var(--mut);margin-left:22px}
+  .aitabs input{accent-color:var(--acc)}
+  .aipane{display:none}.aipane.on{display:block}
+  .hwbox{font-size:13px;color:var(--mut);background:var(--panel2);border:1px dashed var(--line);border-radius:12px;padding:10px 12px}
+  .hwbox b{color:var(--txt)}
+  /* ---------- editor de cortes ---------- */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;z-index:50;overflow:auto;padding:24px 16px}
+  .modal.on{display:block}
+  .ed{max-width:1100px;margin:0 auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;grid-template-columns:300px 1fr;gap:18px}
+  .ed video{width:100%;aspect-ratio:9/16;background:#000;border-radius:12px;object-fit:contain}
+  .ed h2{margin:0 0 6px;font-size:18px;grid-column:1/-1;display:flex;align-items:center;gap:10px}
+  .ed h2 .x{margin-left:auto;background:none;border:0;color:var(--mut);font-size:22px;cursor:pointer}
+  .ed .f{margin-bottom:10px}.ed textarea{width:100%;min-height:62px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:9px;font:inherit;resize:vertical}
+  .bar2{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 10px}
+  .bar2 button,.ebtn{border:1px solid var(--line);background:var(--panel2);color:var(--txt);border-radius:9px;padding:7px 10px;cursor:pointer;font:600 13px Inter,sans-serif}
+  .bar2 .info{font-size:13px;color:var(--mut)}.bar2 .info b{color:var(--txt)}
+  .mode{padding:7px 12px;border-radius:9px;font-weight:700;font-size:13px}
+  .mode.s{background:#10351f;color:#5cf08f;border:1px solid #1f5d36}.mode.e{background:#3a1515;color:#ff8a8a;border:1px solid #7a2a2a}
+  .words{max-height:46vh;overflow:auto;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;line-height:2.1;font-size:15px}
+  .words .w{padding:2px 3px;border-radius:5px;cursor:pointer;color:#77778a}
+  .words .w.in{color:var(--txt)}.words .w:hover{background:#2e2e40}
+  .words .w.kw{color:var(--acc2);font-weight:700}
+  .words .w.st{background:#1f5d36;color:#fff;box-shadow:-3px 0 0 #5cf08f}.words .w.en{background:#7a2a2a;color:#fff;box-shadow:3px 0 0 #ff8a8a}
+  .words i.t{font-style:normal;font-size:11px;color:var(--mut);margin:0 6px 0 2px;user-select:none}
+  .help{font-size:12px;color:var(--mut);margin:6px 0 0}
+  .edfoot{grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .edfoot .go{min-height:44px;padding:0 22px}
+  .edprog{flex:1;min-width:200px;font-size:13px;color:var(--mut)}
+  @media (max-width:820px){.ed{grid-template-columns:1fr}.ed video{max-height:60vh}}
   @media (max-width:560px){.wrap{padding:18px 16px 60px}button.go{width:100%}}
 </style>
 </head>
@@ -66,8 +101,9 @@
 <div class="wrap">
   <header>
     <div class="logo">✂</div>
-    <div><h1>ClipForge</h1><p>De video largo a clips virales para TikTok, Shorts y Reels</p></div>
-    <span class="badge" id="aiBadge">IA: …</span>
+    <div><h1>NovoClip</h1><p>De video largo a clips virales para TikTok, Shorts y Reels</p></div>
+    <span class="badge" id="hwBadge" style="margin-left:auto">Equipo: detectando…</span>
+    <span class="badge" id="aiBadge" style="margin-left:8px">IA: …</span>
   </header>
 
   <form class="card" id="form">
@@ -89,7 +125,7 @@
         <option value="9:16">9:16 · TikTok / Shorts / Reels</option><option value="4:5">4:5 · Feed Instagram</option>
         <option value="1:1">1:1 · Cuadrado</option><option value="16:9">16:9 · Horizontal</option></select></div>
       <div class="f"><label>Encuadre</label><select name="layout">
-        <option value="auto">Automático</option><option value="track">Seguir la cara</option>
+        <option value="auto">Automático (enfoca a quien habla)</option><option value="split">Dividido (una persona arriba y otra abajo)</option><option value="wide">Abierto (que salga casi todo)</option><option value="track">Seguir la cara</option>
         <option value="blur">Video completo + fondo desenfocado</option>
         <option value="gaming">Stream: webcam arriba + juego abajo</option>
         <option value="gamecenter">Solo el juego (sin webcam)</option></select></div>
@@ -99,25 +135,110 @@
         <option value="">Detectar</option><option value="es">Español</option><option value="en">Inglés</option>
         <option value="pt">Portugués</option><option value="fr">Francés</option></select></div>
       <div class="f"><label>Precisión transcripción</label><select name="whisper_model">
-        <option value="base">Rápida</option><option value="small" selected>Equilibrada</option>
-        <option value="medium">Alta</option><option value="large-v3">Máxima (lenta)</option></select></div>
+        <option value="auto" selected>Automática (según tu equipo)</option><option value="base">Rápida</option><option value="small">Equilibrada</option>
+        <option value="medium">Alta</option><option value="large-v3-turbo">Turbo (ideal con GPU)</option>
+        <option value="large-v3">Máxima (lenta)</option></select></div>
       <div class="f"><label>Fuente</label><input name="font" value="Arial Black"></div>
+      <div class="f"><label>Procesar con</label><select name="device" id="device">
+        <option value="auto">Automático (GPU si hay)</option><option value="gpu">GPU (tarjeta gráfica)</option>
+        <option value="cpu">Procesador (CPU)</option></select></div>
+      <div class="f"><label>Velocidad</label><select name="speed">
+        <option value="auto" selected>Automática (según tu equipo)</option><option value="rapido">Rápido</option><option value="normal">Normal</option>
+        <option value="calidad">Máxima calidad (lento)</option></select></div>
       <div class="f"><label>Calidad (CRF)</label><select name="crf">
-        <option value="16">Máxima</option><option value="18" selected>Alta</option><option value="21">Media</option></select></div>
+        <option value="14">Original (archivos grandes)</option><option value="16" selected>Máxima</option>
+        <option value="18">Alta</option><option value="21">Media (archivos pequeños)</option></select></div>
+      <div class="f"><label>Resolución a descargar</label><select name="source_quality">
+        <option value="max" selected>La mejor de YouTube (hasta 4K)</option><option value="1080">Hasta 1080p (más rápido)</option></select></div>
       <label class="chk"><input type="checkbox" id="hook" checked> Titular gancho arriba</label>
+      <div class="aibox" style="grid-column:1/-1">
+        <div class="aitabs">
+          <label><input type="radio" name="aimode" value="incluida"> <b>IA incluida</b> <span>con tu suscripción de NovoClip</span></label>
+          <label><input type="radio" name="aimode" value="propia"> <b>Mi propia clave</b> <span>Gemini o Claude, pagas tú lo que uses</span></label>
+        </div>
+        <div id="aiInc" class="aipane">
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><input type="password" id="lickey" placeholder="clave de licencia de NovoClip" autocomplete="off" style="flex:1;min-width:200px">
+            <button type="button" class="ebtn" id="licsave">Activar</button></div>
+          <p class="help" id="incStatus"></p>
+        </div>
+        <div id="aiOwn" class="aipane">
+          <div class="grid" style="margin-top:0">
+            <div class="f"><label>Usar</label><select name="ai_provider" id="ai_provider">
+              <option value="auto">Automática</option><option value="gemini">Gemini</option><option value="claude">Claude</option></select></div>
+            <div class="f" style="grid-column:span 2"><label>Clave de Gemini (gratis en aistudio.google.com/apikey) · modelo</label>
+              <div style="display:flex;gap:6px"><input type="password" id="gkey" placeholder="pega tu clave" autocomplete="off">
+              <input id="gmodel" placeholder="gemini-flash-latest" style="max-width:170px"></div></div>
+            <div class="f" style="grid-column:span 2"><label>Clave de Claude (console.anthropic.com) · opcional</label>
+              <input type="password" id="akey" placeholder="sk-ant-..." autocomplete="off"></div>
+          </div>
+          <button type="button" class="ebtn" id="gsave">Guardar claves</button> <span class="help" id="ownStatus"></span>
+        </div>
+      </div>
+      <div class="hwbox" id="hwbox" style="grid-column:1/-1"></div>
       <label class="chk"><input type="checkbox" id="ai" checked> Elegir clips con IA</label>
+      <label class="chk" title="Baja solo el audio para elegir los clips y luego solo los trozos elegidos, en vez del video entero"><input type="checkbox" id="smart_download" checked> Descarga rápida (solo los trozos)</label>
+      <label class="chk" title="Elige los clips leyendo los subtítulos que YouTube ya tiene del video: empieza en segundos, sin bajar ni transcribir el video entero"><input type="checkbox" id="use_captions" checked> Modo instantáneo (subtítulos de YouTube)</label>
       <label class="chk"><input type="checkbox" id="review" checked> Revisar clips con IA</label>
+      <label class="chk"><input type="checkbox" id="jumpcuts" checked> Quitar silencios</label>
+      <label class="chk"><input type="checkbox" id="zoom" checked> Zoom dinámico</label>
+      <label class="chk"><input type="checkbox" id="progress_bar" checked> Barra de progreso</label>
+      <label class="chk"><input type="checkbox" id="color_pop" checked> Color más vivo</label>
+      <label class="chk" title="Pon archivos .mp3 en la carpeta music/"><input type="checkbox" id="music" checked> Música de fondo</label>
+      <label class="chk" title="Pega el link de un directo de YouTube o Twitch que esté en vivo ahora"><input type="checkbox" id="live"> 🔴 Directo (clips en tiempo real)</label>
+      <div class="f" id="liveWin" style="display:none"><label>Analizar el directo cada</label><select name="live_window">
+        <option value="120">2 minutos</option><option value="180" selected>3 minutos</option>
+        <option value="300">5 minutos</option><option value="600">10 minutos</option></select></div>
     </div>
 
     <div id="prog">
       <div class="bar"><i id="barI"></i></div>
       <div class="msg"><span id="pmsg">Iniciando…</span><span id="ppct">0%</span></div>
+      <button type="button" class="cancel" id="cancel">✕ Cancelar generación</button>
     </div>
   </form>
 
   <section id="out"></section>
 </div>
 
+
+<div class="modal" id="edModal"><div class="ed">
+  <h2>✏️ Editar clip <span id="edNum"></span><button class="x" id="edClose" title="Cerrar">✕</button></h2>
+  <div>
+    <video id="edVideo" controls playsinline></video>
+    <p class="help">Así está ahora el clip. Cuando vuelvas a generarlo, aquí verás la nueva versión.</p>
+  </div>
+  <div>
+    <div class="bar2">
+      <span class="mode s" id="edMode">Clic en una palabra = INICIO</span>
+      <span class="info" id="edInfo"></span>
+    </div>
+    <div class="bar2">
+      <span class="info">Inicio</span><button data-n="s,-0.5">−0.5 s</button><button data-n="s,0.5">+0.5 s</button>
+      <span class="info" style="margin-left:10px">Fin</span><button data-n="e,-0.5">−0.5 s</button><button data-n="e,0.5">+0.5 s</button>
+      <button id="edReset" title="Volver al corte que tenía">↺ Deshacer cambios</button>
+    </div>
+    <div class="words" id="edWords"></div>
+    <p class="help">Clic: marca el inicio y luego el final del clip (verde = empieza, rojo = termina).
+      Doble clic: corregir una palabra mal escrita en los subtítulos. Mayús + clic: resaltar o quitar resaltado (palabra clave).</p>
+    <div class="grid" style="margin-top:12px">
+      <div class="f" style="grid-column:span 2"><label>Título</label><input id="edTitle"></div>
+      <div class="f" style="grid-column:span 2"><label>Titular arriba (gancho)</label><input id="edHook"></div>
+      <div class="f"><label>Encuadre</label><select id="edLayout">
+        <option value="auto">Automático (quien habla)</option><option value="split">Dividido</option>
+        <option value="wide">Abierto</option><option value="track">Seguir la cara</option><option value="blur">Completo + fondo</option>
+        <option value="gaming">Stream: webcam arriba</option><option value="gamecenter">Solo el juego</option></select></div>
+      <div class="f"><label>Subtítulos</label><select id="edStyle"></select></div>
+      <label class="chk"><input type="checkbox" id="edShowHook"> Mostrar titular</label>
+    </div>
+    <div class="f"><label>Descripción para publicar</label><textarea id="edCaption"></textarea></div>
+    <div class="f"><label>Hashtags</label><input id="edTags"></div>
+  </div>
+  <div class="edfoot">
+    <button class="go" id="edSave">↻ Volver a generar este clip</button>
+    <button class="ebtn" id="edDelete" style="color:#ff8a8a">🗑 Eliminar clip</button>
+    <span class="edprog" id="edProg"></span>
+  </div>
+</div></div>
 <script>
 const STY = {viral:["#FFE600","QUE <b>LOCURA</b> ESTO"],caja:["#00E676","QUE <b>LOCURA</b> ESTO"],karaoke:["#FF3DD8","QUE <b>LOCURA</b> ESTO"],
   neon:["#00F0FF","QUE <b>LOCURA</b> ESTO"],minimal:["#FFFFFF","Que locura esto"],none:["#888","Sin subtítulos"]};
@@ -125,7 +246,21 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 fetch("/api/config").then(r=>r.json()).then(c=>{
-  const b=$("#aiBadge"); b.textContent = c.ai ? "IA: Claude activa" : "IA: algoritmo local"; if(c.ai) b.classList.add("on");
+  const h=c.hw||{}, hb=$("#hwBadge");
+  const name = h.gpu_name || "GPU";
+  const trGpu = h.whisper_cuda ? " · transcripción CUDA" : (h.whispercpp ? " · transcripción Vulkan" : "");
+  if (h.encoder_name || h.whisper_cuda || h.whispercpp) {
+    hb.textContent = `${name}` + (h.encoder_name ? ` · render ${h.encoder_name}` : "") + trGpu;
+    hb.classList.add("on");
+  } else {
+    hb.textContent = (h.gpu_name ? `${h.gpu_name} · ` : "") + "render con CPU (clic para ver por qué)";
+    hb.style.cursor = "pointer";
+    hb.onclick = () => alert("Diagnóstico de GPU\n\nTarjetas: " + (h.gpus||[]).join(", ") +
+      "\nFFmpeg: " + (h.ffmpeg||"no encontrado") + "\nCodificadores en tu FFmpeg: " + ((h.ffmpeg_gpu_encoders||[]).join(", ")||"ninguno") +
+      "\n\nErrores:\n" + Object.entries(h.errors||{}).map(([k,v])=>`- ${k}: ${v}`).join("\n") +
+      "\n\nSoluciones: actualiza los drivers de tu tarjeta y FFmpeg (winget upgrade Gyan.FFmpeg), luego reinicia la app.");
+  }
+  aiBadge(c);
 }).catch(()=>{});
 
 const box=$("#styles");
@@ -143,6 +278,8 @@ $("#form").onsubmit = async e => {
   if (!fd.get("url") && !$("#file").files[0]) { $("#url").focus(); return; }
   if (!$("#file").files[0]) fd.delete("file");
   fd.set("show_hook", $("#hook").checked); fd.set("use_ai", $("#ai").checked); fd.set("review", $("#review").checked);
+  for (const k of ["jumpcuts","zoom","progress_bar","color_pop","music","live","smart_download","use_captions"]) fd.set(k, $("#"+k).checked);
+  shown = -1;
   $("#go").disabled = true; $("#prog").style.display="block"; $("#out").innerHTML="";
   setP(0,"Enviando…");
   try {
@@ -153,26 +290,78 @@ $("#form").onsubmit = async e => {
 };
 function setP(p,m){$("#barI").style.width=p+"%";$("#ppct").textContent=Math.round(p)+"%";$("#pmsg").textContent=m;}
 function fail(m){$("#pmsg").innerHTML='<span class="err">'+esc(m)+'</span>';$("#go").disabled=false;}
+function aiBadge(c){
+  const b=$("#aiBadge"), on = !!c.ai;
+  b.textContent = on ? "IA: " + c.ai_name : "IA: algoritmo local (sin IA)";
+  b.classList.toggle("on", on);
+  document.querySelectorAll('input[name=aimode]').forEach(r => r.checked = (r.value === c.ai_mode));
+  $("#aiInc").classList.toggle("on", c.ai_mode === "incluida"); $("#aiOwn").classList.toggle("on", c.ai_mode === "propia");
+  $("#incStatus").textContent = (c.included||{}).text || "";
+  $("#incStatus").style.color = (c.included||{}).ok ? "var(--ok)" : "";
+  $("#lickey").style.display = $("#licsave").style.display = (c.included||{}).source === "proxy" ? "" : "none";
+  if (c.license) $("#lickey").placeholder = "licencia guardada ✓ (pega otra para cambiarla)";
+  if (c.gemini) $("#gkey").placeholder = "clave guardada ✓ (pega otra para cambiarla)";
+  if (c.anthropic) $("#akey").placeholder = "clave guardada ✓";
+  $("#gmodel").value = c.gemini_model || "";
+  $("#ownStatus").textContent = c.ai_mode==="propia" ? (on ? "✓ Usando " + c.ai_name : "Pega al menos una clave y guarda.") : "";
+  const p = c.profile || {};
+  if (p.summary) $("#hwbox").innerHTML = `🖥️ <b>Tu equipo:</b> ${esc(p.summary)} · nivel <b>${esc(p.tier)}</b><br>
+    Con "Automática" la app transcribe con <b>${esc(p.transcribe_on)}</b> (precisión <b>${esc(p.recommended.whisper_model)}</b>) y renderiza con <b>${esc(p.render_on)}</b>.`;
+}
+async function saveSettings(fd){
+  const r = await fetch("/api/settings", {method:"POST", body:fd}); aiBadge(await r.json());
+}
+document.querySelectorAll('input[name=aimode]').forEach(r => r.onchange = () => { const fd=new FormData(); fd.set("ai_mode", r.value); saveSettings(fd); });
+$("#licsave").onclick = async () => { const fd=new FormData(); fd.set("license_key", $("#lickey").value.trim()); $("#lickey").value=""; await saveSettings(fd); };
+$("#gsave").onclick = async () => {
+  const fd = new FormData();
+  if ($("#gkey").value.trim()) fd.set("gemini_key", $("#gkey").value.trim());
+  if ($("#akey").value.trim()) fd.set("anthropic_key", $("#akey").value.trim());
+  fd.set("gemini_model", $("#gmodel").value.trim());
+  $("#gkey").value = ""; $("#akey").value = "";
+  await saveSettings(fd);
+  $("#gsave").textContent = "Guardado ✓"; setTimeout(()=>$("#gsave").textContent="Guardar claves", 2000);
+};
+let currentJob = null, shown = -1;
+$("#live").onchange = e => { $("#liveWin").style.display = e.target.checked ? "block" : "none"; $("#go").textContent = e.target.checked ? "Empezar a clipear el directo" : "Generar clips"; };
+function cancelBtn(show){ const b=$("#cancel"); b.style.display = show ? "inline-block" : "none"; b.disabled=false; b.textContent="✕ Cancelar generación"; }
+$("#cancel").onclick = async () => {
+  if (!currentJob || !confirm($("#live").checked ? "¿Detener el directo? Los clips ya hechos se conservan." : "¿Cancelar la generación de clips?")) return;
+  const b=$("#cancel"); b.disabled=true; b.textContent="Cancelando…";
+  try { await fetch(`/api/jobs/${currentJob}/cancel`, {method:"POST"}); } catch(e) {}
+};
 async function poll(id){
-  const j = await (await fetch("/api/jobs/"+id)).json();
+  currentJob = id; cancelBtn(true);
+  let j;
+  try { j = await (await fetch("/api/jobs/"+id)).json(); }
+  catch(e) { setTimeout(()=>poll(id), 2000); return; }
+  if (j.status==="cancelled") {
+    currentJob=null; cancelBtn(false); $("#go").disabled=false;
+    $("#barI").style.width="0"; $("#ppct").textContent=""; $("#pmsg").textContent="Generación cancelada.";
+    return;
+  }
   setP(j.progress, j.message);
-  if (j.status==="done") { $("#go").disabled=false; show(id,j.result); return; }
-  if (j.status==="error") { fail(j.message); return; }
+  if (j.result && j.result.clips && j.result.clips.length !== shown && j.status!=="done") { shown = j.result.clips.length; if (shown) show(id, j.result); }
+  if (j.live && j.status==="live" && !j.cancel_requested) { const b=$("#cancel"); b.textContent="⏹ Detener directo (conserva los clips)"; }
+  if (j.status==="done") { currentJob=null; cancelBtn(false); $("#go").disabled=false; if ((!j.live || j.result.clips.length) && j.result.clips.length !== shown) show(id,j.result); else if (j.result.clips.length) { const t=document.querySelector("#out h2"); if (t) t.firstChild.textContent = `${j.result.clips.length} clips · ${j.result.title} `; } shown=-1; return; }
+  if (j.status==="error") { currentJob=null; cancelBtn(false); fail(j.message); return; }
+  if (j.cancel_requested) { const b=$("#cancel"); b.disabled=true; b.textContent="Cancelando…"; }
   setTimeout(()=>poll(id), 1200);
 }
 function show(id,res){
   const cs = res.clips;
-  $("#out").innerHTML = `<h2>${cs.length} clips · ${esc(res.title)}</h2><div class="clips">${cs.map(c=>{
+  $("#out").innerHTML = `<h2>${res.partial ? `${cs.length} de ${res.total} clips listos` : `${cs.length} clips`} · ${esc(res.title)} <a href="/api/jobs/${id}/zip" style="font-size:13px;font-weight:600;margin-left:10px;padding:6px 12px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);text-decoration:none">⬇ Descargar todos (.zip)</a></h2><div class="clips">${cs.map(c=>{
     const cap = (c.caption||c.title)+"\n\n"+(c.hashtags||[]).join(" ");
-    const u = `/files/${id}/${encodeURIComponent(c.file)}`;
+    const u = `/files/${id}/${encodeURIComponent(c.file)}`, bust = `?v=${BUST}`;
     return `<div class="clip">
-      <video src="${u}" ${c.thumb?`poster="/files/${id}/${encodeURIComponent(c.thumb)}"`:""} controls preload="metadata" playsinline></video>
+      <video src="${u}${bust}" ${c.thumb?`poster="/files/${id}/${encodeURIComponent(c.thumb)}${bust}"`:""} controls preload="metadata" playsinline></video>
       <div class="b">
-        <div class="row"><span class="score">🔥 ${Math.round(c.score)}</span><span class="dur">${c.duration.toFixed(0)}s · ${fmt(c.start)}–${fmt(c.end)}</span></div>
+        <div class="row"><span class="score">🔥 ${Math.round(c.score)}</span><span class="dur">${c.duration.toFixed(0)}s · ${fmt(c.start)}–${fmt(c.end)}${c.edited?" · editado":""}</span></div>
         <h3>${esc(c.title)}</h3>
         <div class="why">${esc(c.reason)}</div>
         ${review(c.review)}
         <div class="cap">${esc(cap).replace(/\n/g,"<br>")}</div>
+        ${res.live || res.partial ? "" : `<div class="acts"><button onclick="openEditor('${id}',${c.index})">✏️ Editar corte</button></div>`}
         <div class="acts"><a class="dl" href="${u}?download=1">Descargar</a><button data-cap="${esc(cap)}" onclick="navigator.clipboard.writeText(this.dataset.cap);this.textContent='¡Copiado!'">Copiar texto</button></div>
       </div></div>`;}).join("")}</div>`;
 }
@@ -186,6 +375,91 @@ function review(r){
     ${esc(r.resumen)}${items.length?`<ul>${items.join("")}</ul>`:""}</div>`;
 }
 const fmt = s => { s=Math.floor(s); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); };
+
+// ------------------------------- editor de cortes -------------------------------
+let BUST = Date.now(), ED = null;
+const fmt1 = s => { const m=Math.floor(s/60); return m+":"+(s-m*60).toFixed(1).padStart(4,"0"); };
+async function openEditor(job, index){
+  let d;
+  try { d = await (await fetch(`/api/jobs/${job}/clips/${index}`)).json(); } catch(e) { alert("No se pudo abrir el clip."); return; }
+  if (!d.clip) { alert(d.detail || "No se pudo abrir el clip."); return; }
+  if (!d.editable) { alert("Este clip es de una versión anterior o de un directo y no se puede editar. Genera los clips de nuevo."); return; }
+  const c = d.clip;
+  ED = {job, index, c, words: d.words.map(w=>({...w})), start:c.start, end:c.end, orig:[c.start,c.end],
+        mode:"s", kws:new Set((c.keywords||[]).map(norm))};
+  $("#edNum").textContent = "#" + c.index;
+  $("#edVideo").src = `/files/${job}/${encodeURIComponent(c.file)}?v=${BUST}`;
+  $("#edTitle").value = c.title||""; $("#edHook").value = c.hook||""; $("#edCaption").value = c.caption||"";
+  $("#edTags").value = (c.hashtags||[]).join(" ");
+  $("#edStyle").innerHTML = d.styles.map(s=>`<option value="${s}">${s==="none"?"Sin subtítulos":s}</option>`).join("");
+  $("#edStyle").value = d.caption_style; $("#edLayout").value = d.layout; $("#edShowHook").checked = !!c.hook;
+  $("#edProg").textContent = ""; $("#edSave").disabled = false;
+  edRender(); $("#edModal").classList.add("on"); document.body.style.overflow = "hidden";
+  setTimeout(()=>{ const s=document.querySelector("#edWords .st"); if (s) s.scrollIntoView({block:"center"}); }, 50);
+}
+function norm(w){ return String(w).toLowerCase().normalize("NFC").replace(/[^\p{L}\p{N}]/gu,""); }
+function edRender(){
+  const W = ED.words; let html = "", prevE = -9;
+  const si = W.findIndex(w => w.e > ED.start + 0.05), ei = W.reduce((acc,w,k)=> w.s < ED.end - 0.2 ? k : acc, -1);
+  W.forEach((w,k)=>{
+    if (w.s - prevE > 0.8 || k===0) html += `${k?"<br>":""}<i class="t">${fmt1(w.s)}</i>`;
+    const cls = ["w", (k>=si && k<=ei)?"in":"", k===si?"st":"", k===ei?"en":"", ED.kws.has(norm(w.w))?"kw":""].join(" ");
+    html += `<span class="${cls}" data-k="${k}">${esc(w.w)}</span> `; prevE = w.e;
+  });
+  $("#edWords").innerHTML = html || "<i>No hay transcripción guardada para este clip.</i>";
+  const dur = ED.end - ED.start;
+  $("#edInfo").innerHTML = `Inicio <b>${fmt1(ED.start)}</b> · Fin <b>${fmt1(ED.end)}</b> · Duración <b>${dur.toFixed(1)} s</b>`;
+  const m=$("#edMode"); m.className = "mode " + ED.mode; m.textContent = ED.mode==="s" ? "Clic en una palabra = INICIO" : "Clic en una palabra = FINAL";
+}
+$("#edWords").addEventListener("click", e=>{
+  const el = e.target.closest(".w"); if (!el || !ED) return;
+  const w = ED.words[+el.dataset.k];
+  if (e.shiftKey) { const n=norm(w.w); ED.kws.has(n) ? ED.kws.delete(n) : ED.kws.add(n); edRender(); return; }
+  if (ED.mode==="s") { ED.start = Math.max(0, w.s - 0.1); if (ED.end <= ED.start + 1) ED.end = ED.start + 5; ED.mode="e"; }
+  else { const e2 = w.e + 0.35; if (e2 > ED.start + 1) { ED.end = e2; ED.mode="s"; } }
+  edRender();
+});
+$("#edWords").addEventListener("dblclick", e=>{
+  const el = e.target.closest(".w"); if (!el || !ED) return;
+  const w = ED.words[+el.dataset.k], t = prompt("Corregir la palabra (se verá así en los subtítulos):", w.w);
+  if (t !== null && t.trim()) { w.w = t.trim(); edRender(); }
+});
+document.querySelectorAll(".bar2 button[data-n]").forEach(b=> b.onclick = ()=>{
+  const [k,v] = b.dataset.n.split(","); if (k==="s") ED.start = Math.max(0, Math.min(ED.end-1, ED.start + +v)); else ED.end = Math.max(ED.start+1, ED.end + +v);
+  edRender();
+});
+$("#edReset").onclick = ()=>{ [ED.start, ED.end] = ED.orig; ED.mode="s"; edRender(); };
+function edClose(){ $("#edModal").classList.remove("on"); document.body.style.overflow=""; $("#edVideo").pause(); }
+$("#edClose").onclick = edClose;
+$("#edModal").onclick = e => { if (e.target.id==="edModal" && !$("#edSave").disabled) edClose(); };
+$("#edSave").onclick = async ()=>{
+  const body = {start:ED.start, end:ED.end, title:$("#edTitle").value, hook:$("#edShowHook").checked ? $("#edHook").value : "",
+    show_hook:$("#edShowHook").checked, caption:$("#edCaption").value, hashtags:$("#edTags").value.split(/\s+/).filter(Boolean),
+    keywords:[...ED.kws], words:ED.words, layout:$("#edLayout").value, caption_style:$("#edStyle").value};
+  $("#edSave").disabled = true; $("#edProg").textContent = "Enviando…";
+  let r;
+  try { r = await (await fetch(`/api/jobs/${ED.job}/clips/${ED.index}/render`, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)})).json(); }
+  catch(e) { $("#edProg").textContent = "Error al enviar."; $("#edSave").disabled = false; return; }
+  const poll2 = async ()=>{
+    const j = await (await fetch("/api/jobs/"+r.id)).json();
+    $("#edProg").textContent = `${Math.round(j.progress)}% · ${j.message}`;
+    if (j.status==="done") {
+      BUST = Date.now(); show(ED.job, j.result);
+      const c = j.result.clips.find(x=>x.index===ED.index);
+      if (c) { $("#edVideo").src = `/files/${ED.job}/${encodeURIComponent(c.file)}?v=${BUST}`; ED.orig=[c.start,c.end]; ED.c=c; }
+      $("#edProg").textContent = "✅ Clip actualizado. Revísalo en el reproductor."; $("#edSave").disabled = false; return;
+    }
+    if (j.status==="error" || j.status==="cancelled") { $("#edProg").innerHTML = '<span class="err">'+esc(j.message)+'</span>'; $("#edSave").disabled = false; return; }
+    setTimeout(poll2, 1000);
+  };
+  poll2();
+};
+$("#edDelete").onclick = async ()=>{
+  if (!confirm("¿Eliminar este clip? Se borra el video.")) return;
+  const res = await (await fetch(`/api/jobs/${ED.job}/clips/${ED.index}`, {method:"DELETE"})).json();
+  edClose(); BUST = Date.now(); show(ED.job, res);
+};
+document.addEventListener("keydown", e=>{ if (e.key==="Escape" && $("#edModal").classList.contains("on") && !$("#edSave").disabled) edClose(); });
 </script>
 </body>
 </html>
