@@ -1,5 +1,5 @@
 "use client";
-import { Slider, Switch as HSwitch } from "@heroui/react";
+import { Slider } from "@heroui/react";
 import { useId, type ReactNode } from "react";
 import { cn } from "./cn";
 
@@ -24,18 +24,35 @@ export function Segmented<T extends string>({ label, value, onChange, options, c
   );
 }
 
-/** Interruptor de HeroUI con etiqueta y ayuda. */
+/**
+ * Interruptor propio (no el de HeroUI): se puede pulsar tanto en el botón como en el texto.
+ * Con el de HeroUI solo respondía el texto y pulsar el botón no hacía nada.
+ */
 export function Switch({ checked, onChange, label, hint, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string; disabled?: boolean }) {
+  const id = useId();
+  const toggle = () => !disabled && onChange(!checked);
   return (
-    <HSwitch isSelected={checked} onChange={onChange} isDisabled={disabled} className="flex w-full flex-row items-start gap-3">
-      <HSwitch.Control className="mt-0.5">
-        <HSwitch.Thumb />
-      </HSwitch.Control>
-      <HSwitch.Content className="flex min-w-0 flex-col items-start text-left">
-        <span className="block text-[15px] font-semibold text-ink">{label}</span>
-        {hint && <span className="block text-[13px] font-normal leading-snug text-ink-3">{hint}</span>}
-      </HSwitch.Content>
-    </HSwitch>
+    <div className={cn("flex w-full items-start gap-3", disabled && "opacity-50")}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-labelledby={`${id}-l`}
+        aria-describedby={hint ? `${id}-h` : undefined}
+        disabled={disabled}
+        onClick={toggle}
+        className={cn(
+          "relative mt-0.5 h-6 w-10 shrink-0 cursor-pointer rounded-full transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-hi disabled:cursor-not-allowed",
+          checked ? "bg-accent" : "bg-line-2",
+        )}
+      >
+        <span aria-hidden className={cn("absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition-transform duration-200 ease-[var(--ease-out)]", checked && "translate-x-4")} />
+      </button>
+      <div onClick={toggle} className={cn("flex min-w-0 flex-1 select-none flex-col items-start text-left", disabled ? "cursor-not-allowed" : "cursor-pointer")}>
+        <span id={`${id}-l`} className="block text-[15px] font-semibold text-ink">{label}</span>
+        {hint && <span id={`${id}-h`} className="block text-[13px] font-normal leading-snug text-ink-3">{hint}</span>}
+      </div>
+    </div>
   );
 }
 
