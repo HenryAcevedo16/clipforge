@@ -206,6 +206,7 @@ class Options:
     live_chat: bool = True          # usar los picos del chat de Twitch como señal
     snap_silence: bool = True       # cortar en el silencio real del audio
     refine: bool = True             # segunda pasada de la IA: afinar inicio y final palabra por palabra
+    complete_ideas: bool = True     # que ningún clip termine antes de cerrar la idea de quien habla
     device: str = "auto"            # auto (GPU si hay) | gpu | cpu
     speed: str = "auto"             # auto (según tu equipo) | rapido | normal | calidad
 
@@ -1400,8 +1401,13 @@ Elige los MEJORES clips (máximo {want}). Cómo piensa un buen editor:
    saludos, "como les decía").
 2. AUTONOMÍA: alguien que nunca vio el video lo tiene que entender. Evita clips que dependan de algo dicho antes
    ("eso que dije", "lo de antes").
-3. ARCO: gancho → desarrollo → remate. Termina justo después del punchline, la conclusión o la frase memorable,
-   no a mitad de idea ni con relleno después.
+3. ARCO: gancho → desarrollo → remate. EL FINAL IMPORTA TANTO COMO EL GANCHO: el clip termina cuando la idea,
+   la historia o el argumento YA QUEDÓ CERRADO (conclusión, punchline, frase memorable o cambio claro de tema).
+   NUNCA termines mientras la persona sigue explicando: si la frase siguiente continúa o completa lo anterior
+   (empieza con "porque", "entonces", "por eso", "pero", "así que", "y", "es decir", "o sea"...) o la frase actual
+   acaba en coma o queda abierta, INCLUYE las siguientes frases hasta el cierre. Usa la duración que haga falta
+   (hasta el máximo): es preferible un clip largo y completo a uno corto que se corta a mitad de idea.
+   Si la idea no cabe completa en el máximo, empieza más tarde (en otro gancho) en vez de cortar el final.
 4. EMOCIÓN Y VALOR: humor, sorpresa, polémica, confesiones, consejos concretos, historias personales, datos.
    Las frases con ⚡ suelen ser buenos momentos.
 5. DESCARTA: intro, despedidas, patrocinios, "suscríbete", partes técnicas aburridas, silencios, repeticiones.
@@ -1494,7 +1500,8 @@ de contexto antes y después por si conviene mover los cortes.
 Para cada clip devuelve start_word y end_word:
 - Empieza EXACTAMENTE en la primera palabra del gancho: sin muletillas, saludos ni conectores ("y", "bueno", "entonces",
   "o sea"), y sin cortar una frase a la mitad.
-- Termina justo después del remate o de la idea completa, al final de una frase. No dejes relleno ni el inicio de otra idea.
+- Termina justo después del remate o de la idea completa, al final de una frase. No dejes relleno ni el inicio de otra idea,
+  pero NUNCA cortes antes de que quien habla cierre la idea (si la frase siguiente la completa, inclúyela).
 - Duración (segundo de la última palabra menos segundo de la primera): entre {opts.min_len:.0f} y {opts.max_len:.0f} s.
 - Si el corte actual ya es el mejor, devuelve los mismos índices."""
     res = ask_claude(prompt, Ajustes, opts)
@@ -1507,6 +1514,114 @@ Para cada clip devuelve start_word y end_word:
         if not (opts.min_len * 0.9 <= ne - ns <= opts.max_len * 1.1):
             continue
         if abs(ns - c.start) > 12 or abs(ne - c.end) > 12:
+            continue
+        if any(o is not c and _overlaps((ns, ne), (o.start, o.end), gap=0.3) for o in clips):
+            continue
+        c.start, c.end = ns, ne
+    return clips
+
+
+_END_RE = re.compile(r"[.!?…][\"')\]»”]*$")
+_CONNECT = {"porque", "pero", "entonces", "así", "asi", "por", "es", "o", "pues", "aunque", "sino", "y", "e", "que",
+            "because", "but", "so", "then", "and", "which", "meaning", "cause"}
+
+
+def extend_to_sentence_end(clips: list, tr: dict, opts: Options) -> list:
+    """Red de seguridad sin IA: si un clip termina a mitad de frase (o la frase siguiente es la continuación:
+    "porque...", "pero...", "entonces..."), lo alarga hasta cerrar la idea, sin pasar de la duración máxima."""
+    words = [w for s in tr["segments"] for w in s.get("words", [])]
+    if len(words) < 20:
+        return clips
+    punct = sum(1 for w in words if _END_RE.search(w["w"])) / len(words)
+    if punct < 0.015:      # transcripción sin puntuación (p. ej. subtítulos automáticos): no se puede saber dónde acaba una frase
+        return clips
+    for c in clips:
+        b = max((k for k, w in enumerate(words) if w["e"] <= c.end + 0.05), default=None)
+        if b is None or words[b]["s"] < c.start:
+            continue
+        limit = c.start + opts.max_len * 1.05
+        k, moved = b, False
+        steps = 0
+        while k + 1 < len(words) and not _END_RE.search(words[k]["w"]) and steps < 45:
+            nxt = words[k + 1]
+            if nxt["e"] + 0.35 > limit or nxt["s"] - words[k]["e"] > 1.6:
+                break
+            k, steps, moved = k + 1, steps + 1, True
+        if not _END_RE.search(words[k]["w"]):
+            continue                                   # no se cierra a tiempo: se deja como está
+        # la frase siguiente es la continuación de la idea ("porque...", "pero..."): se incluye una más
+        if k + 1 < len(words) and words[k + 1]["s"] - words[k]["e"] < 1.0 and _norm(words[k + 1]["w"]) in _CONNECT:
+            j = k + 1
+            while j + 1 < len(words) and not _END_RE.search(words[j]["w"]) and j - k < 45:
+                if words[j + 1]["e"] + 0.35 > limit or words[j + 1]["s"] - words[j]["e"] > 1.6:
+                    break
+                j += 1
+            if _END_RE.search(words[j]["w"]) and words[j]["e"] + 0.35 <= limit:
+                k, moved = j, True
+        if not moved:
+            continue
+        ne = words[k]["e"] + 0.35
+        if any(o is not c and _overlaps((c.start, ne), (o.start, o.end), gap=0.3) for o in clips):
+            continue
+        c.end = ne
+    return clips
+
+
+def complete_endings(clips: list, tr: dict, opts: Options) -> list:
+    """Pasada de la IA solo para los finales: enseña a la IA lo que viene DESPUÉS del corte y le pregunta si la idea
+    ya quedó cerrada; si no, mueve el final (y el inicio si hace falta) hasta que la idea quede completa."""
+    from pydantic import BaseModel, Field
+
+    class Final(BaseModel):
+        clip: int = Field(description="número del clip")
+        idea_completa: bool = Field(description="true si en el corte actual la idea ya quedó cerrada")
+        start_word: int = Field(description="índice de la primera palabra del clip (igual que ahora salvo que haga falta empezar más tarde)")
+        end_word: int = Field(description="índice de la última palabra donde la idea queda cerrada (al final de una frase)")
+
+    class Finales(BaseModel):
+        finales: list[Final]
+
+    words = [w for s in tr["segments"] for w in s.get("words", [])]
+    if not words or not clips:
+        return clips
+    blocks = []
+    for c in clips:
+        a = next((k for k, w in enumerate(words) if w["s"] >= c.start - 0.05), None)
+        b = max((k for k, w in enumerate(words) if w["e"] <= c.end + 0.05), default=None)
+        if a is None or b is None or b <= a:
+            continue
+        tail = [k for k in range(b + 1, len(words)) if words[k]["s"] <= c.end + 28][:90]
+        inside = " ".join(f"[{k}]{words[k]['w']}" for k in range(a, b + 1))
+        after = " ".join(f"[{k}]{words[k]['w']}" for k in tail) or "(no hay más texto)"
+        blocks.append(f"CLIP {c.index} — \"{c.title}\" · dura {c.end - c.start:.0f} s · palabras {a} a {b}\n"
+                      f"TEXTO DEL CLIP: {inside}\n=== AQUÍ TERMINA EL CORTE ACTUAL ===\nLO QUE SE DICE DESPUÉS: {after}")
+    if not blocks:
+        return clips
+    prompt = f"""Eres editor de clips virales. Revisa SOLO LOS FINALES de estos clips. El problema que queremos evitar: un clip con
+buen gancho y desarrollo que se corta ANTES de que quien habla termine la idea.
+
+{chr(10).join(blocks)}
+
+Para cada clip decide:
+- idea_completa: ¿el clip termina cuando la idea, historia o argumento ya quedó cerrado (conclusión, remate, frase final)?
+  Si la última frase queda abierta, acaba en coma, o lo que se dice después la completa o la explica ("porque...", "entonces...",
+  "por eso...", la conclusión, el remate), la idea NO está completa.
+- end_word: la palabra donde la idea queda cerrada, siempre al final de una frase. Si no está completa, avanza hasta el cierre
+  usando "LO QUE SE DICE DESPUÉS". Si ya está completa, deja la misma palabra final. Si hay relleno ajeno al final
+  (otro tema que empieza), retrocede hasta el cierre real.
+- start_word: igual que ahora, salvo que alargar el final haga pasar de {opts.max_len:.0f} segundos: en ese caso empieza más
+  tarde (en otro gancho, en inicio de frase) para que quepa la idea COMPLETA. Nunca sacrifiques el final.
+- Duración total (de start_word a end_word) entre {opts.min_len:.0f} y {opts.max_len:.0f} segundos."""
+    res = ask_claude(prompt, Finales, opts)
+    by = {f.clip: f for f in res.finales}
+    for c in clips:
+        f = by.get(c.index)
+        if not f or not (0 <= f.start_word < f.end_word < len(words)):
+            continue
+        ns, ne = max(0.0, words[f.start_word]["s"] - 0.1), words[f.end_word]["e"] + 0.35
+        if not (opts.min_len * 0.9 <= ne - ns <= opts.max_len * 1.1):
+            continue
+        if abs(ns - c.start) > 20 or abs(ne - c.end) > 25:
             continue
         if any(o is not c and _overlaps((ns, ne), (o.start, o.end), gap=0.3) for o in clips):
             continue
@@ -1578,6 +1693,12 @@ def select_clips(src: Path, tr: dict, opts: Options, title: str, progress: Progr
                     clips = refine_boundaries(clips, tr, opts)
                 except Exception as e:
                     progress(43, f"No se pudo afinar los cortes ({str(e)[:80]}); se usan los originales.")
+            if clips and opts.complete_ideas:
+                progress(43.3, "La IA comprueba que cada clip termine cuando la idea queda cerrada...")
+                try:
+                    clips = complete_endings(clips, tr, opts)
+                except Exception as e:
+                    progress(43.3, f"No se pudo revisar los finales con IA ({str(e)[:80]}).")
         except Exception as e:  # cae al algoritmo local
             progress(42, f"IA no disponible ({str(e)[:80]}), usando algoritmo local...")
     if clips and len(clips) < opts.num_clips:
@@ -1591,6 +1712,8 @@ def select_clips(src: Path, tr: dict, opts: Options, title: str, progress: Progr
             if not any(_overlaps((c.start, c.end), (x.start, x.end), gap=0.5) for x in clips):
                 c.index = len(clips) + 1
                 clips.append(c)
+    if clips and opts.complete_ideas:
+        clips = extend_to_sentence_end(clips, tr, opts)      # red de seguridad: nunca terminar a mitad de frase
     if clips and opts.snap_silence and src:
         clips = snap_to_silence(src, clips)
     return clips

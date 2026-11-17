@@ -215,3 +215,11 @@ En **Ajustes → Diagnóstico → Revisar mi equipo** la app comprueba FFmpeg, e
 
 ## 👁️ Vista previa del encuadre
 En el paso 2, junto a "Encuadre", pulsa **Probar el encuadre (10 s)**: la app saca una muestra corta del video (con el encuadre, zoom y efectos elegidos, sin subtítulos) para que veas cómo quedará antes de procesar todo. "Probar otro momento" prueba otra parte. No funciona con directos.
+
+## 🎯 Clips que terminan la idea
+Un clip no debe cortarse mientras quien habla sigue explicando. Ahora hay tres capas:
+1. **El editor de IA** recibe la regla de que el final importa tanto como el gancho: incluye las frases siguientes si completan la idea ("porque...", "entonces...", "por eso...") y usa la duración que haga falta hasta el máximo.
+2. **Revisión de finales con IA:** una pasada aparte le enseña a la IA lo que se dice *después* del corte y mueve el final (o empieza más tarde si no cabe) hasta que la idea queda cerrada.
+3. **Red de seguridad sin IA:** si el corte cae a mitad de frase, el clip se alarga hasta el siguiente punto y, si la frase siguiente es una continuación, también la incluye, sin pasar del máximo.
+
+Se puede apagar en el paso 2 con **"Terminar siempre la idea"**.

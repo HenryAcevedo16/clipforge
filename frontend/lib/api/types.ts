@@ -156,6 +156,7 @@ export interface CreateJobInput {
   logo_opacity?: number; // %
   loudnorm?: boolean; // igualar el volumen
   refine?: boolean; // afinar inicio y final con IA
+  complete_ideas?: boolean; // que cada clip termine cuando la idea queda cerrada
   snap_silence?: boolean; // cortar en silencios naturales
   live?: boolean; // el enlace es un directo: clips en tiempo real
   live_window?: number;

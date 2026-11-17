@@ -181,6 +181,7 @@ async def create_job(
     highlight_keywords: bool = Form(True),
     loudnorm: bool = Form(True),
     refine: bool = Form(True),
+    complete_ideas: bool = Form(True),
     snap_silence: bool = Form(True),
     live: bool = Form(False),
     live_window: int = Form(180),
@@ -221,7 +222,7 @@ async def create_job(
                  use_ai=use_ai, ai_provider=ai_provider, smart_download=smart_download,
                  source_quality=source_quality if source_quality in ("max", "1080") else "max", use_captions=use_captions, crf=crf, review=review, jumpcuts=jumpcuts, zoom=zoom,
                  progress_bar=progress_bar, color_pop=color_pop, music=music, highlight_keywords=highlight_keywords,
-                 loudnorm=loudnorm, refine=refine, snap_silence=snap_silence,
+                 loudnorm=loudnorm, refine=refine, complete_ideas=complete_ideas, snap_silence=snap_silence,
                  device=device if device in ("auto", "gpu", "cpu") else "auto",
                  speed=speed if speed in ("rapido", "normal", "calidad", "auto") else "auto",
                  live_window=max(60, min(int(live_window), 1800)))
