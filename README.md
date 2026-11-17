@@ -92,7 +92,6 @@ Arriba de las opciones hay dos modos:
     cliente usa su clave de licencia, con un límite de usos de IA al día.
 - **Mi propia clave:** el usuario pega su clave de Gemini o de Claude y paga lo que use.
 Para usar tu suscripción de Claude (Claude Code), elígela en Ajustes -> Mi suscripción de Claude.
-actives en las copias que repartas.
 
 ## Ajuste automático según el equipo (nuevo)
 La app lee el procesador, la RAM, la tarjeta gráfica y su memoria, y con "Automática" en Precisión y Velocidad
