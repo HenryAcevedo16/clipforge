@@ -39,7 +39,7 @@ claude
 ```
 En esa ventana elige iniciar sesión con tu cuenta de Claude; cuando entre, ciérrala (`/exit`).
 Listo: la app usará `claude -p` para elegir los clips y revisarlos. Consume tus límites de uso de la suscripción.
-La app usa **Opus** por defecto. Para cambiarlo: `setx NOVOCLIP_CLAUDE_MODEL sonnet` (gasta menos de tu suscripción).
+La app usa **Sonnet con esfuerzo alto** por defecto. Cambiar: `setx NOVOCLIP_CLAUDE_MODEL opus` y `setx NOVOCLIP_CLAUDE_EFFORT medium`.
 
 **B) Con clave de API** (se paga aparte en https://console.anthropic.com)
 ```bash

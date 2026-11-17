@@ -170,7 +170,7 @@ class Options:
     language: Optional[str] = None  # None = autodetectar ("es", "en", ...)
     whisper_model: str = "auto"     # auto (según tu equipo) | tiny | base | small | medium | large-v3 | large-v3-turbo
     use_ai: bool = True             # usar Claude para elegir clips si hay API key
-    ai_model: str = "claude-opus-5-5"
+    ai_model: str = "claude-sonnet-5-5"
     use_captions: bool = True       # YouTube: elegir los clips con los subtítulos del video (sin bajar nada)
     smart_download: bool = True     # YouTube: bajar solo el audio y luego solo los trozos elegidos
     ai_provider: str = "auto"       # auto (Claude y, si no hay, Gemini) | claude | gemini
@@ -1242,7 +1242,7 @@ def ask_claude(prompt: str, schema, opts: Options, images: Optional[list] = None
                 content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
                                                             "data": base64.b64encode(data).decode()}})
         resp = anthropic.Anthropic(api_key=anthropic_key()).messages.parse(
-            model=opts.ai_model, max_tokens=16000, output_config={"effort": "medium"},
+            model=opts.ai_model, max_tokens=16000, output_config={"effort": os.environ.get("NOVOCLIP_CLAUDE_EFFORT") or "high"},
             messages=[{"role": "user", "content": content}], output_format=schema,
         )
         if resp.stop_reason == "refusal" or resp.parsed_output is None:
@@ -1273,8 +1273,8 @@ def ask_claude(prompt: str, schema, opts: Options, images: Optional[list] = None
         else:
             cmd += ["--disallowedTools", "Bash", "Edit", "Write", "WebFetch", "WebSearch", "Read", "Glob", "Grep"]
         # Con Claude Code se usa Opus por defecto (NOVOCLIP_CLAUDE_MODEL lo cambia: sonnet, haiku...)
-        model = os.environ.get("NOVOCLIP_CLAUDE_MODEL") or "opus"
-        cmd += ["--model", model]
+        model = os.environ.get("NOVOCLIP_CLAUDE_MODEL") or "sonnet"
+        cmd += ["--model", model, "--effort", os.environ.get("NOVOCLIP_CLAUDE_EFFORT") or "high"]
         env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
 
         last_err = ""
