@@ -1,6 +1,6 @@
 "use client";
 import { Card, Chip, Tabs } from "@heroui/react";
-import { ArrowLeft, ArrowRight, Captions, ChevronDown, FileVideo, Film, Link2, Scissors, Sparkles, Star, Upload, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Captions, ChevronDown, FileVideo, Film, Link2, Scissors, Send, Sparkles, Star, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, type BrandTemplate, type ClipResult, type Job, type SubtitleStyleId } from "@/lib/api";
@@ -11,6 +11,7 @@ import { formatDuration } from "@/lib/time";
 import { detectPlatform, SUPPORTED_TEXT } from "@/lib/platform";
 import { PlatformPill } from "../ui/PlatformPill";
 import { ClipEditor } from "../projects/ClipEditor";
+import { PublishDialog } from "../projects/PublishDialog";
 import { ClipPreview } from "../brand/ClipPreview";
 import { Button } from "../ui/Button";
 import { Segmented, Switch } from "../ui/Controls";
@@ -666,6 +667,7 @@ function ResultStep({ job, saving, onSend, onAgain, onEdit }: { job: Job; saving
 
 export function ResultThumb({ jobId, c, onEdit }: { jobId: string; c: ClipResult; onEdit?: () => void }) {
   const rev = c.review as { nota?: number };
+  const [publishing, setPublishing] = useState(false);
   return (
     <li className="min-w-0">
       <Card className="h-full flex-col gap-0 overflow-hidden border border-line p-0">
@@ -682,13 +684,17 @@ export function ResultThumb({ jobId, c, onEdit }: { jobId: string; c: ClipResult
           )}
         </div>
         <p className="line-clamp-3 p-3 pb-2 text-[13px] font-semibold leading-snug [overflow-wrap:anywhere]">{c.title}</p>
-        {onEdit && (
-          <div className="mt-auto px-3 pb-3">
+        <div className="mt-auto flex flex-col gap-1.5 px-3 pb-3">
+          <Button size="sm" variant="primary" onClick={() => setPublishing(true)} icon={<Send className="size-4" aria-hidden />} className="w-full">
+            Publicar
+          </Button>
+          {onEdit && (
             <Button size="sm" onClick={onEdit} icon={<Scissors className="size-4" aria-hidden />} className="w-full">
               Editar
             </Button>
-          </div>
-        )}
+          )}
+        </div>
+        {publishing && <PublishDialog jobId={jobId} clip={c} onClose={() => setPublishing(false)} />}
       </Card>
     </li>
   );

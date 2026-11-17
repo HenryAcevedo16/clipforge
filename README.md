@@ -204,3 +204,6 @@ Con IA activa, si es un stream la app divide sola: streamer arriba (usa el recua
 ## ✏️ Todo se puede apagar y cada clip se puede editar
 - **Antes de generar** (paso 2): puedes apagar subtítulos, resaltado de palabras clave, título arriba, quitar silencios, zoom, barra de progreso, color, música, igualar volumen, elegir momentos con IA, afinar inicio/fin y cortar en silencios. También hay "Sin plantilla".
 - **Después de generar**: cada clip tiene el botón **Editar** (también mientras se generan los demás, y en Mis proyectos). Ahí cambias título, titular, descripción, hashtags, recortas con deslizadores o con la transcripción, corriges palabras y apagas efectos solo de ese clip. "Volver a generar este clip" rehace solo ese.
+
+## 📤 Publicar (asistido, sin permisos ni pagos)
+Cada clip tiene el botón **Publicar**. Eliges TikTok, YouTube Shorts, Instagram Reels, Facebook Reels o X: se abre en una ventana nueva su página de subir video, se descarga el clip y se copia el texto (descripción + hashtags). Solo arrastras el video y pegas. Funciona con varias cuentas: usa la sesión que tengas abierta en tu navegador.

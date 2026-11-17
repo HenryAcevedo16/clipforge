@@ -1,6 +1,6 @@
 "use client";
 import { Card } from "@heroui/react";
-import { CalendarClock, Check, ChevronDown, Copy, Download, Scissors, TriangleAlert } from "lucide-react";
+import { CalendarClock, Check, ChevronDown, Copy, Download, Scissors, Send, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { api, type ClipResult, type ClipReview } from "@/lib/api";
@@ -10,6 +10,7 @@ import { Button, buttonClass } from "../ui/Button";
 import { cn } from "../ui/cn";
 import { ScoreDial, scoreTone } from "../ui/ScoreDial";
 import { useToast } from "../ui/Toast";
+import { PublishDialog } from "./PublishDialog";
 
 function isReview(r: ClipResult["review"]): r is ClipReview {
   return typeof (r as ClipReview).nota === "number";
@@ -107,6 +108,7 @@ export function ClipCard({ jobId, c, onEdit }: { jobId: string; c: ClipResult; o
   const rev = c.rev ?? 0;
   const toast = useToast();
   const [copied, setCopied] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const copy = async () => {
     try {
@@ -158,12 +160,15 @@ export function ClipCard({ jobId, c, onEdit }: { jobId: string; c: ClipResult; o
         )}
         <ReviewPanel review={c.review} />
         <div className="mt-auto flex flex-wrap gap-2 pt-1">
+          <Button size="sm" variant="primary" onClick={() => setPublishing(true)} icon={<Send className="size-4" aria-hidden />} className="max-sm:w-full">
+            Publicar
+          </Button>
           {onEdit && (
             <Button size="sm" onClick={onEdit} icon={<Scissors className="size-4" aria-hidden />} className="max-sm:flex-1">
               Editar corte
             </Button>
           )}
-          <Link href={`/calendario?clip=${encodeURIComponent(jobId)}::${encodeURIComponent(c.file)}`} className={cn(buttonClass({ variant: "primary", size: "sm" }), "max-sm:w-full")}>
+          <Link href={`/calendario?clip=${encodeURIComponent(jobId)}::${encodeURIComponent(c.file)}`} className={cn(buttonClass({ size: "sm" }), "max-sm:flex-1")}>
             <CalendarClock className="size-4" aria-hidden />
             Programar
           </Link>
@@ -176,6 +181,7 @@ export function ClipCard({ jobId, c, onEdit }: { jobId: string; c: ClipResult; o
           </Button>
         </div>
       </div>
+      {publishing && <PublishDialog jobId={jobId} clip={c} onClose={() => setPublishing(false)} />}
     </Card>
   );
 }
