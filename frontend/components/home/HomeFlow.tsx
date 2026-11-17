@@ -1,6 +1,6 @@
 "use client";
 import { Card, Chip, Tabs } from "@heroui/react";
-import { ArrowLeft, ArrowRight, Captions, ChevronDown, FileVideo, Film, Link2, Sparkles, Star, Upload, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Captions, ChevronDown, FileVideo, Film, Link2, Scissors, Sparkles, Star, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, type BrandTemplate, type ClipResult, type Job, type SubtitleStyleId } from "@/lib/api";
@@ -10,6 +10,7 @@ import { useResource } from "@/lib/hooks/useResource";
 import { formatDuration } from "@/lib/time";
 import { detectPlatform, SUPPORTED_TEXT } from "@/lib/platform";
 import { PlatformPill } from "../ui/PlatformPill";
+import { ClipEditor } from "../projects/ClipEditor";
 import { ClipPreview } from "../brand/ClipPreview";
 import { Button } from "../ui/Button";
 import { Segmented, Switch } from "../ui/Controls";
@@ -39,6 +40,13 @@ interface Settings {
   progressBar: boolean;
   colorPop: boolean;
   music: boolean;
+  captions: boolean; // subtítulos sí/no
+  showHook: boolean; // titular arriba
+  highlightKw: boolean; // palabras clave en color
+  loudnorm: boolean; // igualar volumen
+  useAi: boolean; // elegir momentos con IA
+  refine: boolean; // afinar inicio/fin con IA
+  snapSilence: boolean; // cortar en silencio natural
   live: boolean;
   liveEvery: number; // minutos entre análisis de la IA en un directo
   smartDownload: boolean;
@@ -47,7 +55,7 @@ interface Settings {
 
 const DEFAULTS: Settings = {
   numClips: 5, minLen: 20, maxLen: 60, aspect: "9:16", captionStyle: "viral", review: true, templateId: null,
-  layout: "auto", jumpcuts: true, zoom: true, progressBar: true, colorPop: true, music: true, live: false, liveEvery: 3, smartDownload: true, quality: "max",
+  layout: "auto", jumpcuts: true, zoom: true, progressBar: true, colorPop: true, music: true, captions: true, showHook: true, highlightKw: true, loudnorm: true, useAi: true, refine: true, snapSilence: true, live: false, liveEvery: 3, smartDownload: true, quality: "max",
 };
 
 const LAYOUT_OPTIONS = [
@@ -71,6 +79,16 @@ export function HomeFlow() {
   const [formError, setFormError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
+  const [editing, setEditing] = useState<number | null>(null);
+  const refreshJob = useCallback(async () => {
+    if (!jobId0.current) return;
+    try {
+      setJob(await api.getJob(jobId0.current));
+    } catch {
+      /* se reintenta en el siguiente avance */
+    }
+  }, []);
+  const jobId0 = useRef<string | null>(null);
   const [pollError, setPollError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -100,6 +118,7 @@ export function HomeFlow() {
 
   // Consulta el progreso mientras el trabajo está en cola o procesando.
   const jobId = job?.id;
+  jobId0.current = jobId ?? null;
   const active = step === 3 && !!jobId && job?.status !== "done" && job?.status !== "error";
   useEffect(() => {
     if (!active || !jobId) return;
@@ -166,7 +185,13 @@ export function HomeFlow() {
         min_len: s.minLen,
         max_len: s.maxLen,
         aspect: s.aspect,
-        caption_style: s.captionStyle,
+        caption_style: s.captions ? s.captionStyle : "none",
+        show_hook: s.showHook,
+        use_ai: s.useAi,
+        highlight_keywords: s.highlightKw,
+        loudnorm: s.loudnorm,
+        refine: s.refine,
+        snap_silence: s.snapSilence,
         review: s.review && !!config.data?.ai,
         layout: s.layout,
         jumpcuts: s.jumpcuts,
@@ -395,6 +420,8 @@ export function HomeFlow() {
                 <Switch checked={s.progressBar} onChange={(v) => setS({ ...s, progressBar: v })} label="Barra de progreso" hint="Una barra arriba que invita a ver hasta el final." />
                 <Switch checked={s.colorPop} onChange={(v) => setS({ ...s, colorPop: v })} label="Color más vivo" hint="Más contraste, color y nitidez." />
                 <Switch checked={s.music} onChange={(v) => setS({ ...s, music: v })} label="Música de fondo" hint="Usa las canciones de la carpeta music/ y baja cuando hablan." />
+                <Switch checked={s.loudnorm} onChange={(v) => setS({ ...s, loudnorm: v })} label="Igualar el volumen" hint="Normaliza el audio para que suene parejo en TikTok y Reels." />
+                <Switch checked={s.showHook} onChange={(v) => setS({ ...s, showHook: v })} label="Título arriba" hint="Muestra el gancho en la parte de arriba los primeros segundos." />
               </div>
             </Card>
 
@@ -436,6 +463,13 @@ export function HomeFlow() {
                   </p>
                 ) : (
                   <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="relative cursor-pointer">
+                      <input type="radio" name="tpl" className="peer sr-only" checked={s.templateId === null} onChange={() => setS({ ...s, templateId: null })} />
+                      <span className="flex min-h-16 items-center gap-3 rounded-2xl border border-line bg-raised-2/50 px-4 py-2.5 transition-[border-color,background-color] duration-150 peer-checked:border-accent peer-checked:bg-accent-soft peer-focus-visible:outline-2 peer-focus-visible:outline-accent-hi">
+                        <span className="font-bold">Sin plantilla</span>
+                        <span className="text-[13px] text-ink-3">usa solo el estilo de abajo</span>
+                      </span>
+                    </label>
                     {templates.data!.map((t) => (
                       <label key={t.id} className="relative cursor-pointer">
                         <input type="radio" name="tpl" className="peer sr-only" checked={s.templateId === t.id} onChange={() => setS({ ...s, templateId: t.id, captionStyle: t.captionStyle })} />
@@ -457,7 +491,11 @@ export function HomeFlow() {
                 )}
               </fieldset>
 
-              <fieldset className="min-w-0">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Switch checked={s.captions} onChange={(v) => setS({ ...s, captions: v })} label="Subtítulos" hint="Apágalo si quieres el clip sin texto en pantalla." />
+                <Switch checked={s.highlightKw} onChange={(v) => setS({ ...s, highlightKw: v })} disabled={!s.captions} label="Resaltar palabras clave" hint="Pinta de otro color las palabras importantes." />
+              </div>
+              <fieldset className={cn("min-w-0 transition-opacity", !s.captions && "pointer-events-none opacity-40")} disabled={!s.captions}>
                 <legend className="mb-2 text-sm font-semibold text-ink-2">Estilo de subtítulos</legend>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {(config.data?.styles ?? STYLE_ORDER).map((id) => {
@@ -489,7 +527,11 @@ export function HomeFlow() {
               </details>
             </Card>
 
-            <Card className="gap-3 border border-line p-5">
+            <Card className="gap-4 border border-line p-5">
+              <h3 className="text-lg font-extrabold">Inteligencia artificial y cortes</h3>
+              <Switch checked={s.useAi} onChange={(v) => setS({ ...s, useAi: v })} label="Elegir los mejores momentos con IA" hint="Si lo apagas, usa un método básico sin IA (más rápido, menos preciso)." />
+              <Switch checked={s.refine} onChange={(v) => setS({ ...s, refine: v })} disabled={!s.useAi} label="Afinar inicio y final con IA" hint="Una segunda pasada para que el clip empiece y termine justo." />
+              <Switch checked={s.snapSilence} onChange={(v) => setS({ ...s, snapSilence: v })} label="Cortar en silencios naturales" hint="Evita cortar a mitad de palabra." />
               <Switch
                 checked={s.review && !!config.data?.ai}
                 disabled={!config.data?.ai}
@@ -553,6 +595,20 @@ export function HomeFlow() {
             <StageList job={job} />
           </Card>
 
+          {!!job.result?.clips?.length && (
+            <div className="mt-6">
+              <h3 className="mb-1 text-lg font-extrabold">Clips que ya están listos</h3>
+              <p className="mb-3 text-sm text-ink-2">
+                Puedes editarlos mientras se generan los demás{job.result.live ? "" : " (los cambios se aplican cuando termine el trabajo actual)"}.
+              </p>
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {job.result.clips.map((c) => (
+                  <ResultThumb key={c.file} jobId={job.id} c={c} onEdit={job.result?.live ? undefined : () => setEditing(c.index)} />
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="mt-6 flex flex-col gap-2 sm:flex-row">
             {job.status === "error" ? (
               <>
@@ -570,12 +626,14 @@ export function HomeFlow() {
         </section>
       )}
 
-      {step === 4 && job?.result && <ResultStep job={job} saving={saving} onSend={() => sendToProjects("project")} onAgain={reset} />}
+      {step === 4 && job?.result && <ResultStep job={job} saving={saving} onSend={() => sendToProjects("project")} onAgain={reset} onEdit={job.result.live ? undefined : setEditing} />}
+
+      {job && editing !== null && <ClipEditor jobId={job.id} index={editing} onClose={() => setEditing(null)} onChanged={refreshJob} />}
     </div>
   );
 }
 
-function ResultStep({ job, saving, onSend, onAgain }: { job: Job; saving: boolean; onSend: () => void; onAgain: () => void }) {
+function ResultStep({ job, saving, onSend, onAgain, onEdit }: { job: Job; saving: boolean; onSend: () => void; onAgain: () => void; onEdit?: (index: number) => void }) {
   const r = job.result!;
   const empty = r.clips.length === 0;
   return (
@@ -597,7 +655,7 @@ function ResultStep({ job, saving, onSend, onAgain }: { job: Job; saving: boolea
       {!empty && (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
           {r.clips.slice(0, 10).map((c) => (
-            <ResultThumb key={c.file} jobId={job.id} c={c} />
+            <ResultThumb key={c.file} jobId={job.id} c={c} onEdit={onEdit ? () => onEdit(c.index) : undefined} />
           ))}
         </ul>
       )}
@@ -606,11 +664,11 @@ function ResultStep({ job, saving, onSend, onAgain }: { job: Job; saving: boolea
   );
 }
 
-function ResultThumb({ jobId, c }: { jobId: string; c: ClipResult }) {
+export function ResultThumb({ jobId, c, onEdit }: { jobId: string; c: ClipResult; onEdit?: () => void }) {
   const rev = c.review as { nota?: number };
   return (
     <li className="min-w-0">
-      <Card className="h-full gap-0 overflow-hidden border border-line p-0">
+      <Card className="h-full flex-col gap-0 overflow-hidden border border-line p-0">
         <div className="relative aspect-[9/16] bg-black">
           {c.thumb && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -623,7 +681,14 @@ function ResultThumb({ jobId, c }: { jobId: string; c: ClipResult }) {
             </span>
           )}
         </div>
-        <p className="line-clamp-3 p-3 text-[13px] font-semibold leading-snug [overflow-wrap:anywhere]">{c.title}</p>
+        <p className="line-clamp-3 p-3 pb-2 text-[13px] font-semibold leading-snug [overflow-wrap:anywhere]">{c.title}</p>
+        {onEdit && (
+          <div className="mt-auto px-3 pb-3">
+            <Button size="sm" onClick={onEdit} icon={<Scissors className="size-4" aria-hidden />} className="w-full">
+              Editar
+            </Button>
+          </div>
+        )}
       </Card>
     </li>
   );

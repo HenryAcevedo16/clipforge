@@ -58,7 +58,7 @@ export const realApi: Api = {
     fd.set("aspect", input.aspect);
     fd.set("caption_style", input.caption_style);
     fd.set("review", String(input.review));
-    for (const k of ["layout", "words_per_line", "font", "show_hook", "language", "whisper_model", "use_ai", "crf", "jumpcuts", "zoom", "progress_bar", "color_pop", "music", "live", "live_window", "smart_download", "use_captions", "source_quality", "device", "speed", "ai_provider"] as const) {
+    for (const k of ["layout", "words_per_line", "font", "show_hook", "language", "whisper_model", "use_ai", "crf", "jumpcuts", "zoom", "progress_bar", "color_pop", "music", "highlight_keywords", "loudnorm", "refine", "snap_silence", "live", "live_window", "smart_download", "use_captions", "source_quality", "device", "speed", "ai_provider"] as const) {
       const v = input[k];
       if (v !== undefined) fd.set(k, String(v));
     }

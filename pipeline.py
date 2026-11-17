@@ -188,6 +188,7 @@ class Options:
     color_pop: bool = True          # más contraste, color y nitidez
     music: bool = True              # música de fondo (si hay archivos en la carpeta music/) que baja con la voz
     music_volume: float = 0.18
+    highlight_keywords: bool = True  # resaltar en color las palabras clave de los subtítulos
     # --- velocidad ---
     # --- modo en vivo ---
     live_window: int = 180          # cada cuántos segundos se analiza lo nuevo del directo
@@ -2257,7 +2258,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         act_c = _ass_color(act)
         emph_c = _ass_color(EMPH_COLORS.get(style, "39FF7A"))
-        kws = {_norm(k) for k in (clip.keywords or [])}
+        kws = {_norm(k) for k in (clip.keywords or [])} if opts.highlight_keywords else set()
         for gi, g in enumerate(groups):
             g_end = g[-1]["e"] + 0.25
             if gi + 1 < len(groups):
@@ -3099,6 +3100,9 @@ def _job_info(workdir: Path) -> dict:
         return {}
 
 
+EDIT_TOGGLES = ("zoom", "jumpcuts", "progress_bar", "color_pop", "music", "highlight_keywords", "loudnorm")
+
+
 def load_clip_for_edit(workdir: Path, index: int) -> dict:
     """Datos para el editor: el clip y las palabras de alrededor con sus tiempos."""
     res = json.loads((workdir / "result.json").read_text(encoding="utf-8"))
@@ -3121,7 +3125,9 @@ def load_clip_for_edit(workdir: Path, index: int) -> dict:
     return {"clip": c, "words": words, "editable": bool(job) and not res.get("live"),
             "layout": c.get("edit_layout") or o.get("layout", "auto"),
             "caption_style": c.get("edit_style") or o.get("caption_style", "viral"),
-            "styles": list(STYLES) + ["none"]}
+            "styles": list(STYLES) + ["none"],
+            "show_hook": bool(c.get("edit_show_hook", o.get("show_hook", True))),
+            "toggles": {k: bool(c.get("edit_toggles", {}).get(k, o.get(k, getattr(Options, k)))) for k in EDIT_TOGGLES}}
 
 
 def _local_video(workdir: Path, job: dict) -> Optional[Path]:
@@ -3157,6 +3163,9 @@ def rerender_clip(workdir: Path, index: int, edits: dict, progress: ProgressFn =
         o.caption_style = edits["caption_style"]
     if "show_hook" in edits:
         o.show_hook = bool(edits["show_hook"])
+    for k in EDIT_TOGGLES:       # interruptores de este clip: subtítulos, zoom, silencios, barra, color, música...
+        if k in edits and edits[k] is not None:
+            setattr(o, k, bool(edits[k]))
 
     res_path = workdir / "result.json"
     res = json.loads(res_path.read_text(encoding="utf-8"))
@@ -3218,7 +3227,8 @@ def rerender_clip(workdir: Path, index: int, edits: dict, progress: ProgressFn =
             part.unlink(missing_ok=True)
     c.review = {}
     new = dict(asdict(c), duration=round(c.out_duration or c.duration, 2),
-               edited=True, edit_layout=o.layout, edit_style=o.caption_style, rev=int(time.time()))
+               edited=True, edit_layout=o.layout, edit_style=o.caption_style,
+               edit_toggles={k: bool(getattr(o, k)) for k in EDIT_TOGGLES}, edit_show_hook=bool(o.show_hook), rev=int(time.time()))
     res["clips"][pos] = new
     res_path.write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
     progress(100, f"Clip {c.index} actualizado.")

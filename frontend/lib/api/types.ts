@@ -147,6 +147,10 @@ export interface CreateJobInput {
   progress_bar?: boolean;
   color_pop?: boolean;
   music?: boolean;
+  highlight_keywords?: boolean; // resaltar palabras clave en los subtítulos
+  loudnorm?: boolean; // igualar el volumen
+  refine?: boolean; // afinar inicio y final con IA
+  snap_silence?: boolean; // cortar en silencios naturales
   live?: boolean; // el enlace es un directo: clips en tiempo real
   live_window?: number;
   smart_download?: boolean; // descarga rápida (solo audio y trozos)
@@ -170,6 +174,18 @@ export interface ClipEditData {
   layout: string;
   caption_style: string;
   styles: string[];
+  toggles?: ClipToggles;
+  show_hook?: boolean;
+}
+/** Interruptores de edición de cada clip. */
+export interface ClipToggles {
+  zoom: boolean;
+  jumpcuts: boolean;
+  progress_bar: boolean;
+  color_pop: boolean;
+  music: boolean;
+  highlight_keywords: boolean;
+  loudnorm: boolean;
 }
 /** Cambios que se envían al volver a generar un clip. */
 export interface ClipEdits {
@@ -184,6 +200,13 @@ export interface ClipEdits {
   words: EditWord[];
   layout: string;
   caption_style: string;
+  zoom?: boolean;
+  jumpcuts?: boolean;
+  progress_bar?: boolean;
+  color_pop?: boolean;
+  music?: boolean;
+  highlight_keywords?: boolean;
+  loudnorm?: boolean;
 }
 export interface SettingsInput {
   ai_mode?: "incluida" | "propia";

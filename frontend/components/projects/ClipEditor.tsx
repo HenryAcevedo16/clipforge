@@ -1,7 +1,7 @@
 "use client";
 import { Eraser, Highlighter, Loader2, Scissors, SpellCheck, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, ApiError, type ClipEditData, type EditWord } from "@/lib/api";
+import { api, ApiError, type ClipEditData, type ClipToggles, type EditWord } from "@/lib/api";
 import { formatDuration } from "@/lib/time";
 import { Button } from "../ui/Button";
 import { Segmented, Switch } from "../ui/Controls";
@@ -12,6 +12,16 @@ import { LoadingLabel, Skeleton } from "../ui/States";
 import { useToast } from "../ui/Toast";
 
 type Tool = "range" | "fix" | "key";
+
+const TOGGLE_DEFAULTS: ClipToggles = { zoom: true, jumpcuts: true, progress_bar: true, color_pop: true, music: true, highlight_keywords: true, loudnorm: true };
+const TOGGLE_LABELS: { key: keyof ClipToggles; label: string; hint: string }[] = [
+  { key: "jumpcuts", label: "Quitar silencios", hint: "Corta las pausas largas." },
+  { key: "zoom", label: "Zoom dinámico", hint: "Cambio de plano y golpe en palabras clave." },
+  { key: "progress_bar", label: "Barra de progreso", hint: "Barra arriba hasta el final." },
+  { key: "color_pop", label: "Color más vivo", hint: "Más contraste y nitidez." },
+  { key: "music", label: "Música de fondo", hint: "Baja cuando hablan." },
+  { key: "loudnorm", label: "Igualar el volumen", hint: "Audio parejo." },
+];
 
 const LAYOUTS = [
   { value: "auto", label: "Automático (quien habla)" },
@@ -55,6 +65,8 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
   const [tags, setTags] = useState("");
   const [layout, setLayout] = useState("auto");
   const [style, setStyle] = useState("viral");
+  const [capOn, setCapOn] = useState(true);
+  const [tg, setTg] = useState<ClipToggles>(TOGGLE_DEFAULTS);
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -81,11 +93,13 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
     setKws(new Set((c.keywords ?? []).map(norm)));
     setTitle(c.title);
     setHook(c.hook);
-    setShowHook(!!c.hook);
+    setShowHook(d.show_hook !== false && !!c.hook);
     setCaption(c.caption);
     setTags(c.hashtags.join(" "));
     setLayout(d.layout);
-    setStyle(d.caption_style);
+    setStyle(d.caption_style === "none" ? "viral" : d.caption_style);
+    setCapOn(d.caption_style !== "none");
+    setTg({ ...TOGGLE_DEFAULTS, ...(d.toggles ?? {}) });
   };
 
   useEffect(() => {
@@ -99,6 +113,8 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
     startRef.current?.scrollIntoView({ block: "center" });
   }, [data]);
 
+  const lo = words.length ? Math.max(0, Math.floor(words[0].s * 10) / 10) : 0;
+  const hi = words.length ? Math.ceil(words[words.length - 1].e * 10) / 10 : 0;
   const first = useMemo(() => words.findIndex((w) => w.e > start + 0.05), [words, start]);
   const last = useMemo(() => words.reduce((acc, w, k) => (w.s < end - 0.2 ? k : acc), -1), [words, end]);
 
@@ -161,7 +177,8 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
         keywords: [...kws],
         words,
         layout,
-        caption_style: style,
+        caption_style: capOn ? style : "none",
+        ...tg,
       });
       // El backend rehace el clip en segundo plano: se consulta su avance.
       for (;;) {
@@ -267,6 +284,18 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
                 Empieza en <b className="text-ink">{sec(start)}</b> · termina en <b className="text-ink">{sec(end)}</b> · dura <b className="text-ink">{formatDuration(end - start)}</b>
                 {changed && <span className="ml-2 text-warn">(cambiado)</span>}
               </p>
+              {words.length > 0 && (
+                <div className="mt-3 grid gap-3 rounded-2xl border border-line bg-raised-2/50 p-3.5 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1 text-sm font-semibold text-ink-2">
+                    <span className="flex justify-between"><span>Empieza en</span><span className="tnum text-ink">{sec(start)}</span></span>
+                    <input type="range" min={lo} max={hi} step={0.1} value={Math.min(start, hi)} onChange={(e) => setStart(Math.max(lo, Math.min(end - 1, Number(e.target.value))))} className="accent-[var(--color-accent-hi)]" aria-label="Inicio del clip" />
+                  </label>
+                  <label className="flex flex-col gap-1 text-sm font-semibold text-ink-2">
+                    <span className="flex justify-between"><span>Termina en</span><span className="tnum text-ink">{sec(end)}</span></span>
+                    <input type="range" min={lo} max={hi} step={0.1} value={Math.min(end, hi)} onChange={(e) => setEnd(Math.min(hi, Math.max(start + 1, Number(e.target.value))))} className="accent-[var(--color-accent-hi)]" aria-label="Final del clip" />
+                  </label>
+                </div>
+              )}
               <div className="mt-2 flex flex-wrap items-center gap-1.5 text-sm">
                 <span className="text-ink-3">Inicio</span>
                 <Button size="sm" onClick={() => nudge("s", -0.5)}>−0,5 s</Button>
@@ -345,15 +374,27 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
                 </select>
               )}
             </Field>
-            <Field label="Estilo de subtítulos">
-              {(a) => (
-                <select {...a} value={style} onChange={(e) => setStyle(e.target.value)} className={cn(inputClass, "pr-8")}>
-                  {data.styles.map((s) => (
+            <div className="flex flex-col gap-2">
+              <Field label="Estilo de subtítulos">
+                {(a) => (
+                <select {...a} value={style} onChange={(e) => setStyle(e.target.value)} disabled={!capOn} className={cn(inputClass, "pr-8")}>
+                  {data.styles.filter((s) => s !== "none").map((s) => (
                     <option key={s} value={s}>{STYLE_LABEL[s] ?? s}</option>
                   ))}
                 </select>
-              )}
-            </Field>
+                )}
+              </Field>
+              <Switch checked={capOn} onChange={setCapOn} label="Mostrar subtítulos" />
+            </div>
+            <fieldset className="sm:col-span-2">
+              <legend className="mb-2 text-sm font-semibold text-ink-2">Efectos de este clip (apaga los que no quieras)</legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Switch checked={tg.highlight_keywords} onChange={(v) => setTg({ ...tg, highlight_keywords: v })} disabled={!capOn} label="Resaltar palabras clave" hint="Color en las palabras importantes." />
+                {TOGGLE_LABELS.map((t) => (
+                  <Switch key={t.key} checked={tg[t.key]} onChange={(v) => setTg({ ...tg, [t.key]: v })} label={t.label} hint={t.hint} />
+                ))}
+              </div>
+            </fieldset>
             <Field label="Descripción para publicar" className="sm:col-span-2">{(a) => <textarea {...a} value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} className={cn(inputClass, "py-3")} />}</Field>
             <Field label="Hashtags" hint="Separados por espacios" className="sm:col-span-2">{(a) => <input {...a} value={tags} onChange={(e) => setTags(e.target.value)} className={inputClass} />}</Field>
           </div>

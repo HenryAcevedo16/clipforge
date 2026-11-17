@@ -161,7 +161,7 @@ export function ProjectDetail({ id }: { id: string }) {
           </div>
           <div className="flex flex-col gap-5">
             {clips.map((c) => (
-              <ClipCard key={c.file} jobId={job.id} c={c} onEdit={state === "done" && !job.result?.live ? () => setEditing(c.index) : undefined} />
+              <ClipCard key={c.file} jobId={job.id} c={c} onEdit={!job.result?.live ? () => setEditing(c.index) : undefined} />
             ))}
           </div>
         </section>
