@@ -90,6 +90,7 @@ export interface ClipResult {
   meta_edited?: boolean; // título/hashtags cambiados a mano
   optimized?: boolean; // la IA optimizó este clip
   opt_note?: string[]; // qué cambió la IA
+  opt_pending?: string[] | null; // lo que la IA no pudo arreglar sola
   opt_prev?: Record<string, unknown> | null; // lo de antes (para deshacer)
   rev?: number; // versión del archivo: cambia cada vez que se vuelve a generar el clip
 }

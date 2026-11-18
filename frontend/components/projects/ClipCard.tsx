@@ -279,9 +279,25 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
                 <li key={i} className="[overflow-wrap:anywhere]">{n}</li>
               ))}
             </ul>
+            {!!c.opt_pending?.length && (
+              <div className="mt-2 border-t border-line pt-2">
+                <p className="font-semibold text-warn">Lo que la IA no pudo arreglar sola (hazlo con «Editar corte»):</p>
+                <ul className="list-disc space-y-0.5 pl-5 text-ink-2">
+                  {c.opt_pending.map((n, i) => (
+                    <li key={i} className="[overflow-wrap:anywhere]">{n}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
         <ReviewPanel review={c.review} />
+        {onEdit && !optBusy && !c.optimized && ((c.review as { problemas?: unknown[] } | undefined)?.problemas?.length ?? 0) > 0 && (
+          <p className="-mt-2 flex items-center gap-2 text-sm text-ink-2">
+            <Sparkles className="size-4 shrink-0 text-accent-hi" aria-hidden />
+            <span>Pulsa <b className="text-ink">Optimizar con IA</b>: intentará arreglar estos problemas y estas recomendaciones solo.</span>
+          </p>
+        )}
         <div className="mt-auto flex flex-wrap gap-2 pt-1">
           <Button size="sm" onClick={() => { setTitle(c.title); setTags(c.hashtags.join(" ")); setQuick(true); }} icon={<Pencil className="size-4" aria-hidden />} className="max-sm:flex-1">
             Título y hashtags

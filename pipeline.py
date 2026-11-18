@@ -3768,6 +3768,22 @@ def optimize_clip(workdir: Path, index: int, progress: ProgressFn = _noop) -> di
                        for k in range(lo_i, hi_i))
     dur = c["end"] - c["start"]
     lo, hi = max(5.0, min(o.min_len, dur * 0.7)), max(o.max_len, dur * 1.25)
+    rv = c.get("review") or {}
+    review_txt = ""
+    if rv and not rv.get("error"):
+        probs = "\n".join(f"- [{p.get('gravedad', '?')}] {p.get('tipo', '')}: {p.get('detalle', '')}"
+                          + (f" (hacia el segundo {p['segundo']:.0f} del clip)" if p.get("segundo") is not None else "")
+                          for p in rv.get("problemas", []))
+        sugs = "\n".join(f"- {x}" for x in rv.get("sugerencias", []))
+        review_txt = f"""
+LA REVISIÓN ANTERIOR DE ESTE CLIP (nota {rv.get('nota', '?')}/100: {rv.get('resumen', '')}) DETECTÓ:
+Problemas:
+{probs or '(ninguno)'}
+Sugerencias:
+{sugs or '(ninguna)'}
+ARREGLA todo lo que esté a tu alcance con tus cambios: problemas de inicio, final, gancho o contenido se arreglan moviendo los cortes
+y reescribiendo los textos; un problema de encuadre se arregla eligiendo otro "layout"; lo que no se pueda arreglar así, anótalo en "no_resuelto".
+"""
 
     class Optim(BaseModel):
         start_word: int = Field(description="índice de la primera palabra del clip (el gancho)")
@@ -3777,7 +3793,9 @@ def optimize_clip(workdir: Path, index: int, progress: ProgressFn = _noop) -> di
         caption: str = Field(description="descripción con una pregunta que invite a comentar")
         hashtags: list[str] = Field(description="3-6 hashtags")
         keywords: list[str] = Field(description="3-8 palabras EXACTAS del clip que conviene resaltar")
-        cambios: list[str] = Field(description="2-5 frases cortas, en español, explicando qué cambiaste y por qué")
+        layout: str = Field(default="", description="solo si la revisión detectó un problema de ENCUADRE: auto | speaker | wide | track | blur | gaming | gamecenter | split. Vacío = no cambiar")
+        cambios: list[str] = Field(description="2-5 frases cortas, en español, explicando qué cambiaste y por qué (incluye qué problema de la revisión arreglaste)")
+        no_resuelto: list[str] = Field(default_factory=list, description="problemas de la revisión que NO se pueden arreglar solos (p. ej. subtítulos que tapan algo); vacío si arreglaste todo")
 
     prompt = f"""Eres el editor jefe de un canal de TikTok/Shorts/Reels. Optimiza este clip YA GENERADO para que retenga más.
 Cada palabra aparece como [índice|segundo]palabra. » marca el inicio actual y « el final actual; hay contexto antes y después.
@@ -3788,7 +3806,7 @@ Hashtags actuales: {' '.join(c.get('hashtags', []))}
 Duración actual: {dur:.1f} s
 
 {listing}
-
+{review_txt}
 Haz esto:
 1. INICIO: que el clip empiece en la primera palabra del gancho (sin muletillas, saludos ni conectores como "y", "bueno", "entonces"),
    sin cortar una frase a la mitad.
@@ -3808,19 +3826,40 @@ En "cambios" explica brevemente qué mejoraste."""
     kws = [_norm(k) for kw in r.keywords for k in kw.split() if _norm(k)][:10]
     tags = [h if h.startswith("#") else "#" + h for h in r.hashtags]
     prev = {k: c.get(k) for k in _OPT_FIELDS}
+    prev["layout"] = data["layout"]
+    layout_new = r.layout.strip() if r.layout.strip() in ("auto", "speaker", "wide", "track", "blur", "gaming", "gamecenter", "split") else ""
+    layout_changed = bool(layout_new) and layout_new != data["layout"]
     new = {"start": ns, "end": ne, "title": r.title.strip() or c["title"], "hook": r.hook.strip(), "caption": r.caption.strip() or c.get("caption", ""),
            "hashtags": tags or c.get("hashtags", []), "keywords": kws or c.get("keywords", [])}
     need_render = (abs(ns - c["start"]) > 0.15 or abs(ne - c["end"]) > 0.15 or new["hook"] != (c.get("hook") or "")
-                   or set(new["keywords"]) != set(c.get("keywords") or []))
+                   or set(new["keywords"]) != set(c.get("keywords") or []) or layout_changed)
     if need_render:
         progress(30, "Aplicando los cambios al video...")
-        rerender_clip(workdir, index, dict(new, show_hook=bool(new["hook"])), lambda p, m: progress(30 + p * 0.68, m))
+        edits = dict(new, show_hook=bool(new["hook"]))
+        if layout_changed:
+            edits["layout"] = layout_new
+        rerender_clip(workdir, index, edits, lambda p, m: progress(30 + p * 0.68, m))
     else:
         update_clip_meta(workdir, index, new)
     note = list(r.cambios)[:6]
+    if layout_changed:
+        note.insert(0, f"Encuadre: de «{data['layout']}» a «{layout_new}».")
     if abs(ns - c["start"]) > 0.15 or abs(ne - c["end"]) > 0.15:
         note.insert(0, f"Corte: de {c['start']:.1f}–{c['end']:.1f} s a {ns:.1f}–{ne:.1f} s ({ne - ns:.0f} s en total).")
-    out = _set_clip_fields(workdir, index, {"opt_prev": prev, "opt_note": note, "optimized": True})
+    out = _set_clip_fields(workdir, index, {"opt_prev": prev, "opt_note": note, "opt_pending": list(r.no_resuelto)[:5] or None, "optimized": True})
+    # Se vuelve a revisar el clip ya arreglado: las recomendaciones de abajo se actualizan (si el problema se arregló, desaparece)
+    if o.review and (need_render or rv):
+        try:
+            progress(96, "La IA vuelve a revisar el clip ya optimizado...")
+            c2 = load_clip_for_edit(workdir, index)
+            fields_ok = {f.name for f in Clip.__dataclass_fields__.values()}
+            clip2 = Clip(**{k: v for k, v in c2["clip"].items() if k in fields_ok})
+            tr_abs = {"language": None, "segments": _group_words(c2["words"])}
+            out = _set_clip_fields(workdir, index, {"review": review_clip(clip2, workdir / "clips" / clip2.file, tr_abs, o)})
+        except Cancelled:
+            raise
+        except Exception:   # noqa: BLE001
+            pass
     progress(100, "Clip optimizado.")
     return out
 
@@ -3833,13 +3872,17 @@ def revert_optimization(workdir: Path, index: int, progress: ProgressFn = _noop)
     if not prev:
         raise RuntimeError("Este clip no tiene una optimización que deshacer.")
     prev = {k: v for k, v in prev.items() if v is not None}
-    need_render = (abs(prev.get("start", c["start"]) - c["start"]) > 0.15 or abs(prev.get("end", c["end"]) - c["end"]) > 0.15
+    prev_layout = prev.pop("layout", None)
+    need_render = (prev_layout is not None and prev_layout != data["layout"]) or (abs(prev.get("start", c["start"]) - c["start"]) > 0.15 or abs(prev.get("end", c["end"]) - c["end"]) > 0.15
                    or (prev.get("hook") or "") != (c.get("hook") or "") or set(prev.get("keywords") or []) != set(c.get("keywords") or []))
     if need_render:
-        rerender_clip(workdir, index, dict(prev, show_hook=bool(prev.get("hook"))), progress)
+        edits = dict(prev, show_hook=bool(prev.get("hook")))
+        if prev_layout:
+            edits["layout"] = prev_layout
+        rerender_clip(workdir, index, edits, progress)
     else:
         update_clip_meta(workdir, index, prev)
-    out = _set_clip_fields(workdir, index, {"opt_prev": None, "opt_note": None, "optimized": None})
+    out = _set_clip_fields(workdir, index, {"opt_prev": None, "opt_note": None, "opt_pending": None, "optimized": None})
     progress(100, "Optimización deshecha.")
     return out
 

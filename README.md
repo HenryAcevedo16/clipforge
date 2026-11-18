@@ -249,3 +249,6 @@ Con Gemini, la **revisión con IA** ya no mira solo 9 fotogramas: recibe el **vi
 - **Descarta lo que no tiene sentido:** un clip que no se entiende solo (poca "autonomía"), no cierra la idea o no engancha se quita antes de entregártelo.
 - **La nota final** mezcla la nota global de la IA con sus notas parciales (gancho, emoción, valor, autonomía, remate) y es **relativa a ese video**.
 - Si los clips los eligió el **método básico** (sin IA, porque no hay IA activa o falló), aparece un aviso en amarillo explicando por qué las notas son bajas y qué hacer.
+
+## 🛠️ "Optimizar con IA" arregla las recomendaciones de la revisión
+Si un clip tiene problemas o recomendaciones de la revisión con IA (encuadre, final abierto, gancho débil...), **Optimizar con IA** los recibe y los arregla: mueve el inicio y el final, reescribe título, gancho y hashtags, y si el problema es de **encuadre** cambia el encuadre. Después **vuelve a revisar** el clip: las recomendaciones se actualizan (si se arregló, desaparecen). Lo que no se pueda arreglar solo (por ejemplo, subtítulos que tapan algo) aparece como "Lo que la IA no pudo arreglar sola". **Deshacer** lo deja como estaba, encuadre incluido.
