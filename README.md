@@ -256,3 +256,5 @@ Si un clip tiene problemas o recomendaciones de la revisión con IA (encuadre, f
 ## Desarrollo con Claude Code: skill de ahorro de tokens
 
 El repo incluye la skill [token-optimization](https://github.com/robertzas/token-optimization-skill) (MIT/Apache-2.0) en `.claude/skills/token-optimization`, un guard que bloquea lecturas completas de archivos enormes (`.claude/hooks/guard_read.py`), `AGENTS.md`/`CLAUDE.md` cortos, `docs/STATUS.md` como traspaso entre sesiones y `docs/MAP.md` (mapa del código; regenéralo con `python3 scripts/gen_map.py --out docs/MAP.md`). Solo afecta a quien edita el proyecto con Claude Code, no a la app.
+
+También se incluye [model-router](https://github.com/strikeout/model-router) (MIT): `.claude/skills/model-router` y cuatro subagentes en `.claude/agents/` que reparten cada tarea al modelo más barato que la haga bien.
