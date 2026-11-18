@@ -2524,6 +2524,23 @@ def _avoid_box(x0: int, gw: int, box: tuple, sw: int) -> int:
 
 def render_clip(src: Path, clip: Clip, tr: dict, opts: Options, outdir: Path, meta: dict,
                 progress: ProgressFn = _noop, p0: float = 0, p1: float = 100, scene: Optional[dict] = None) -> Clip:
+    """Crea el clip. Si el codificador de la GPU (AMD/NVIDIA/Intel) falla, reintenta solo con el procesador (x264)."""
+    try:
+        return _render_clip_once(src, clip, tr, opts, outdir, meta, progress, p0, p1, scene)
+    except Cancelled:
+        raise
+    except (RuntimeError, OSError) as e:
+        enc = video_encoder(opts)
+        gpu = enc[enc.index("-c:v") + 1] if "-c:v" in enc else ""
+        if gpu in ("h264_amf", "h264_nvenc", "h264_qsv"):
+            progress(p0, f"Clip {clip.index}: el codificador de la GPU ({gpu}) falló; reintento con el procesador. "
+                         f"Motivo: {str(e).strip()[-220:]}")
+            return _render_clip_once(src, clip, tr, replace(opts, device="cpu"), outdir, meta, progress, p0, p1, scene)
+        raise
+
+
+def _render_clip_once(src: Path, clip: Clip, tr: dict, opts: Options, outdir: Path, meta: dict,
+                      progress: ProgressFn = _noop, p0: float = 0, p1: float = 100, scene: Optional[dict] = None) -> Clip:
     out_w, out_h = ASPECTS.get(opts.aspect, ASPECTS["9:16"])
     fps = min(opts.fps or meta["fps"], 60)
     name = f"{clip.index:02d}_{slug(clip.title)}"
@@ -2752,6 +2769,7 @@ def render_clip(src: Path, clip: Clip, tr: dict, opts: Options, outdir: Path, me
     proc = _sp_popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
     k = 0
+    broken = None
     try:
         while True:
             check_cancel()
@@ -2838,10 +2856,12 @@ def render_clip(src: Path, clip: Clip, tr: dict, opts: Options, outdir: Path, me
             k += 1
             if k % 30 == 0:
                 progress(p0 + (p1 - p0) * (0.3 + 0.68 * k / total), f"Clip {clip.index}: renderizando {k}/{total} frames")
-    except (Cancelled, BrokenPipeError, OSError):
+    except (Cancelled, BrokenPipeError, OSError) as exc:
         _kill_tree(proc)
         check_cancel()   # si fue por cancelar, sale como "cancelado" y no como error
-        raise
+        if isinstance(exc, Cancelled):
+            raise
+        broken = exc     # ffmpeg se cerró solo: abajo se lee su mensaje de error para explicar por qué
     finally:
         cap.release()
         if _CANCEL.get(threading.get_ident()) is not None and _CANCEL[threading.get_ident()].is_set():
@@ -2862,6 +2882,9 @@ def render_clip(src: Path, clip: Clip, tr: dict, opts: Options, outdir: Path, me
     except Cancelled:
         final.unlink(missing_ok=True)   # no dejar un clip a medias
         raise
+    if broken is not None:
+        final.unlink(missing_ok=True)
+        raise RuntimeError(f"ffmpeg se cerró de golpe en el clip {clip.index} ({type(broken).__name__}): {err[-1500:].strip() or 'sin mensaje'}")
     if proc.returncode != 0:
         raise RuntimeError(f"ffmpeg falló en el clip {clip.index}: {err[-1500:]}")
 
