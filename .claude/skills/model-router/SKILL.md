@@ -3,6 +3,8 @@ name: model-router
 description: Route each task to the cheapest Claude model that can do it well — Haiku, Sonnet, Opus, or Fable — instead of running everything on one model. Use this whenever the user is setting up or running a multi-model / multi-agent workflow, wants to cut token cost or latency by delegating work across model tiers, asks which model to use for a task, is defining Claude Code subagents with per-agent `model` fields, or is building an orchestrator/dispatcher (Claude Code, Conductor, or a custom API harness) that fans work out to subagents. Trigger even when the user just says "route this", "pick the right model", "which tier", "delegate to a cheaper model", or hands over a batch of mixed-difficulty tasks — this skill supplies the tier-selection rubric, ready-to-drop subagent definitions, and a portable classifier.
 ---
 
+> **En este proyecto el tier Fable está descartado.** Ignora todo lo que diga Fable: las revisiones de código y de seguridad, los dominios de seguridad y el techo de dificultad van a **Opus**. No hay subagente `fable-worker`.
+
 # Model Router
 
 Pick the **cheapest model that can do the job well**, then escalate only on evidence. Running every task on your smartest model is the most common and most expensive mistake in agentic workflows; running everything on your cheapest model quietly burns money on retries. This skill encodes a policy that avoids both.

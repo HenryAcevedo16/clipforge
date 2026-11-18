@@ -34,9 +34,8 @@ MODELS = {
     "haiku":  {"cc_alias": "haiku",           "api": "claude-haiku-5-5",          "effort": "low"},
     "sonnet": {"cc_alias": "sonnet",          "api": "claude-sonnet-5-5",         "effort": "medium"},
     "opus":   {"cc_alias": "opus",            "api": "claude-opus-5-5",           "effort": "high"},
-    "fable":  {"cc_alias": "fable",           "api": "claude-fable-5-1",          "effort": "high"},
 }
-ORDER = ["haiku", "sonnet", "opus", "fable"]
+ORDER = ["haiku", "sonnet", "opus"]  # Fable descartado en este proyecto
 
 # Mechanical / verifiable work -> Haiku is fine.
 MECHANICAL = re.compile(
@@ -55,7 +54,7 @@ HARD = re.compile(
     re.I,
 )
 
-# Review pass -> Fable by standing policy, regardless of size or difficulty.
+# Review pass -> Opus (Fable descartado) by standing policy, regardless of size or difficulty.
 REVIEW = re.compile(
     r"\b(code[ -]?review|security[ -]?review|sec[ -]?review"
     # "review this 30-line PR", "review the auth changes", "reviewing my diff"
@@ -80,7 +79,7 @@ FRONTIER = re.compile(
     re.I,
 )
 
-# Safety-hardened domains -> Fable is the right specialist tier.
+# Safety-hardened domains -> Opus (Fable descartado) is the right specialist tier.
 DOMAINS = {"bio", "cyber", "llm_rd"}
 DOMAIN_HINTS = {
     "bio":    re.compile(r"\b(pathogen|virology|genom|protein design|biosecurity|wet lab)\b", re.I),
@@ -105,11 +104,11 @@ def route(
     """Return {tier, model_cc, model_api, effort, reasons}.
 
     Signals, in order of influence:
-      - code or security review pass                 -> Fable (policy override)
+      - code or security review pass                 -> Opus (Fable descartado) (policy override)
       - mechanical language + small scope           -> Haiku
       - hard-reasoning language / wide scope / risk  -> Opus
-      - explicit frontier trigger (and already hard) -> Fable
-      - named safety domain (bio/cyber/llm_rd)       -> Fable
+      - explicit frontier trigger (and already hard) -> Opus (Fable descartado)
+      - named safety domain (bio/cyber/llm_rd)       -> Opus (Fable descartado)
       - each prior cheaper failure                   -> +1 tier
     """
     reasons: list[str] = []
@@ -137,16 +136,16 @@ def route(
         tier = max(tier, "opus", key=ORDER.index)
         reasons.append("irreversible / high-cost-if-wrong -> Opus")
 
-    # 3.5) Review pass -> Fable, by standing policy. This is the one rule that
+    # 3.5) Review pass -> Opus (Fable descartado), by standing policy. This is the one rule that
     # routes on task type rather than judgment load: every code or security
     # review takes the top tier, however small the diff. Implementing what a
     # review found is not a review and is excluded.
     is_review = bool(REVIEW.search(text)) and not REVIEW_FOLLOWUP.search(text)
     if is_review:
-        tier = "fable"
-        reasons.append("code/security review -> Fable (standing policy, size-independent)")
+        tier = "opus"
+        reasons.append("code/security review -> Opus (Fable descartado) (standing policy, size-independent)")
 
-    # 4) Safety domain -> Fable specialist tier.
+    # 4) Safety domain -> Opus (Fable descartado) specialist tier.
     d = (domain or "").strip().lower() or None
     if d and d not in DOMAINS:
         reasons.append(f"unknown domain '{d}' ignored (expected one of {sorted(DOMAINS)})")
@@ -158,13 +157,13 @@ def route(
                 reasons.append(f"domain inferred from text: {name}")
                 break
     if d in DOMAINS:
-        tier = "fable"
-        reasons.append(f"safety-hardened domain ({d}) -> Fable")
+        tier = "opus"
+        reasons.append(f"safety-hardened domain ({d}) -> Opus (Fable descartado)")
 
     # 5) Explicit frontier trigger, but only when the task is already hard.
     if FRONTIER.search(text) and ORDER.index(tier) >= ORDER.index("opus"):
-        tier = "fable"
-        reasons.append("explicit frontier trigger on an already-hard task -> Fable")
+        tier = "opus"
+        reasons.append("explicit frontier trigger on an already-hard task -> Opus (Fable descartado)")
 
     # 6) Escalate one tier per prior cheaper failure.
     if prior_failures > 0:
