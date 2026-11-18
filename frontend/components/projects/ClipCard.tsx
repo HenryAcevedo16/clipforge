@@ -113,6 +113,35 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
   const [title, setTitle] = useState(c.title);
   const [tags, setTags] = useState(c.hashtags.join(" "));
   const [saving, setSaving] = useState(false);
+  const [hookEdit, setHookEdit] = useState(false); // editar el gancho (texto de arriba del video)
+  const [hook, setHook] = useState(c.hook);
+  const [applying, setApplying] = useState(false);
+  const [pct, setPct] = useState(0);
+  const [msg, setMsg] = useState("");
+  const applyHook = async () => {
+    setApplying(true);
+    setPct(0);
+    setMsg("Enviando…");
+    try {
+      const text = hook.trim();
+      const { id } = await api.renderClip(jobId, c.index, { hook: text, show_hook: text !== "" });
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 1000));
+        const j = await api.getJob(id);
+        setPct(j.progress);
+        setMsg(j.message);
+        if (j.status === "error") throw new Error(j.message || "No se pudo aplicar el gancho.");
+        if (j.status === "done") break;
+      }
+      toast("Gancho actualizado en el video.");
+      setHookEdit(false);
+      onChanged?.();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "No se pudo aplicar el gancho.", "bad");
+    } finally {
+      setApplying(false);
+    }
+  };
   const saveMeta = async () => {
     setSaving(true);
     try {
@@ -170,11 +199,39 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
             </p>
           </div>
         </div>
-        {c.hook && (
-          <p className="rounded-2xl bg-raised-2 px-3.5 py-2.5 text-sm [overflow-wrap:anywhere]">
-            <span className="text-ink-3">Gancho: </span>
-            <span className="font-bold">{c.hook}</span>
-          </p>
+        {hookEdit ? (
+          <div className="flex flex-col gap-2 rounded-2xl bg-raised-2 p-3.5">
+            <label className="text-sm text-ink-3" htmlFor={`hook-${c.index}`}>Gancho (texto de arriba del video, déjalo vacío para quitarlo)</label>
+            <input id={`hook-${c.index}`} value={hook} onChange={(e) => setHook(e.target.value)} disabled={applying} maxLength={90} className="min-h-11 w-full rounded-xl border border-line bg-raised px-3 text-base font-bold text-ink focus-visible:outline-2 focus-visible:outline-accent-hi" />
+            {applying ? (
+              <div role="status" className="text-sm">
+                <div className="mb-1 flex items-center gap-2 font-semibold">
+                  <span className="min-w-0 truncate">{msg || "Aplicando al video…"}</span>
+                  <span className="tnum ml-auto text-ink-3">{Math.round(pct)}%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-raised"><div className="brand-bg h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%` }} /></div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="primary" onClick={applyHook}>Aplicar al video</Button>
+                <Button size="sm" onClick={() => { setHookEdit(false); setHook(c.hook); }}>Cancelar</Button>
+                <span className="text-[13px] text-ink-3">Vuelve a crear este clip con el nuevo texto (unos segundos).</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          (c.hook || onEdit) && (
+            <p className="flex flex-wrap items-center gap-2 rounded-2xl bg-raised-2 px-3.5 py-2.5 text-sm [overflow-wrap:anywhere]">
+              <span className="text-ink-3">Gancho: </span>
+              <span className="min-w-0 flex-1 font-bold">{c.hook || "(sin gancho)"}</span>
+              {onEdit && (
+                <button type="button" onClick={() => { setHook(c.hook); setHookEdit(true); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 font-semibold text-accent-hi transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-accent-hi">
+                  <Pencil className="size-3.5" aria-hidden />
+                  {c.hook ? "Cambiar gancho" : "Añadir gancho"}
+                </button>
+              )}
+            </p>
+          )
         )}
         {c.hashtags.length > 0 && (
           <ul className="flex max-h-[4.5rem] flex-wrap gap-1.5 overflow-hidden" aria-label="Hashtags">

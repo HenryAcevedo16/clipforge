@@ -345,7 +345,7 @@ export interface Api {
   getDiagnostics(): Promise<DiagItem[]>;
   previewFraming(input: PreviewInput): Promise<{ id: string }>;
   getClipEdit(jobId: string, index: number): Promise<ClipEditData>;
-  renderClip(jobId: string, index: number, edits: ClipEdits): Promise<{ id: string }>;
+  renderClip(jobId: string, index: number, edits: Partial<ClipEdits>): Promise<{ id: string }>;
   deleteClip(jobId: string, index: number): Promise<void>;
   /** Guarda al instante título, descripción y hashtags (sin volver a generar el video). */
   updateClipMeta(jobId: string, index: number, meta: { title?: string; caption?: string; hashtags?: string[] }): Promise<void>;

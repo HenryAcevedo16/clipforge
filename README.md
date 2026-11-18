@@ -226,6 +226,7 @@ Se puede apagar en el paso 2 con **"Terminar siempre la idea"**.
 
 ## ✏️ Editar cada clip después de generarlo
 En **Mis proyectos → tu proyecto**, cada clip tiene:
+- **Gancho:** botón "Cambiar gancho" junto al gancho: escribes el texto nuevo y "Aplicar al video" lo vuelve a pintar (unos segundos).
 - **Título y hashtags:** edición rápida, se guarda al instante (no vuelve a generar el video).
 - **Editar corte:** recortar con deslizadores, corregir palabras, resaltar, cambiar titular, encuadre y efectos, y "Volver a generar".
 También se ven y se editan los clips que sí se generaron aunque el trabajo haya terminado con error.
