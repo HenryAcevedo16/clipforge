@@ -266,3 +266,7 @@ Se usa la skill [graphify](https://github.com/Graphify-Labs/graphify) (Apache-2.
 ### Actualizar en Windows
 
 Haz doble clic en `actualizar_windows.bat`: baja la última versión de GitHub (no toca tus proyectos, claves ni modelos), instala lo que falte y muestra la versión. Después abre `iniciar_windows.bat` y pulsa Ctrl+F5 en el navegador.
+
+### Directo sin clips
+
+En modo directo la nota mínima por defecto es 60 (antes 70) y baja 8 puntos por cada tramo seguido sin clip (hasta 40). La línea de estado ahora muestra el último análisis, por ejemplo «mejor candidato 52/100 (mínimo 60)», para saber por qué no sale nada.

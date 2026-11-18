@@ -204,7 +204,7 @@ class Options:
     live_window: int = 180          # cada cuántos segundos se analiza lo nuevo del directo
     live_segment: int = 20          # tamaño de los trozos de grabación
     live_clips_per_window: int = 2  # máximo de clips por tramo
-    live_min_score: int = 70        # nota mínima de la IA para sacar un clip del directo
+    live_min_score: int = 60        # nota mínima de la IA para sacar un clip del directo (baja sola si pasan tramos sin clips)
     live_chat: bool = True          # usar los picos del chat de Twitch como señal
     snap_silence: bool = True       # cortar en el silencio real del audio
     refine: bool = True             # segunda pasada de la IA: afinar inicio y final palabra por palabra
@@ -4208,6 +4208,7 @@ def process_live(source: str, workdir: Path, opts: Options, progress: ProgressFn
     keep_prev: Optional[Path] = None
     scene = None
     t_begin = time.time()
+    dry, last_note = 0, ""      # tramos seguidos sin clip y resumen del último análisis
     try:
         while True:
             check_cancel()
@@ -4253,7 +4254,12 @@ def process_live(source: str, workdir: Path, opts: Options, progress: ProgressFn
                     o = replace(opts, num_clips=max(1, opts.live_clips_per_window))
                     clips = select_clips(chunk, tr, o, title, sub)
                     if ai_backend() and opts.use_ai:
-                        clips = [c for c in clips if c.score >= opts.live_min_score]
+                        # si pasan tramos sin ningún clip, el listón baja 8 puntos por tramo (mínimo 40)
+                        thr = max(40, opts.live_min_score - 8 * dry)
+                        best = max((c.score for c in clips), default=0)
+                        last_note = (f" · último análisis: mejor candidato {best}/100 (mínimo {thr})" if clips
+                                     else " · último análisis: la IA no encontró ningún momento")
+                        clips = [c for c in clips if c.score >= thr]
                     else:
                         clips = clips[:1]
                     clips = [c for c in clips if t0_abs + c.start >= last_end_abs - 1.0]   # no repetir el solape
@@ -4275,6 +4281,7 @@ def process_live(source: str, workdir: Path, opts: Options, progress: ProgressFn
                     d["start"], d["end"] = round(t0_abs + c.start, 2), round(t0_abs + c.end, 2)   # tiempo del directo
                     result["clips"].append(d)
                     save()
+                dry = 0 if clips else dry + 1
                 if not clips:
                     sub(97, "nada lo bastante bueno en este tramo; sigo mirando.")
                 # limpiar: se conserva el último trozo como solape con el siguiente tramo
@@ -4313,7 +4320,7 @@ def process_live(source: str, workdir: Path, opts: Options, progress: ProgressFn
             chat_txt = " · chat de Twitch conectado" if (chat is not None and chat.ok) else ""
             progress(min(99, 100 * have / (per * seg)),
                      f"🔴 En directo ({_fmt_clock(time.time() - t_begin)}) · {len(result['clips'])} clips · "
-                     f"próximo análisis en ~{int(wait)} s{chat_txt}")
+                     f"próximo análisis en ~{int(wait)} s{chat_txt}{last_note}")
             time.sleep(1.5)
     finally:
         if chat is not None:
