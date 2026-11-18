@@ -64,7 +64,7 @@ La app también puede usar **Gemini** de Google para elegir, afinar y revisar lo
 1. Crea una clave gratis en https://aistudio.google.com/apikey
 2. En la app, pégala en **"Clave de Gemini"** y pulsa **Guardar** (se guarda solo en tu PC, en `config.json`).
 3. En **IA** elige *Gemini* (o deja *Automática*: usa Claude y, si no está, Gemini).
-El modelo por defecto es `gemini-flash-latest`; puedes escribir otro (por ejemplo uno "pro") en el campo de al lado.
+El modelo por defecto es `gemini-4-hydrogen` (Gemini 4, rápido y barato); puedes elegir otro con el botón "Ver los modelos que puede usar mi clave" (por ejemplo `gemini-4-argon`, más fino, o `gemini-3.8-flash`).
 
 ## 🎨 Nuevo diseño: NovoClip (frontend)
 La página principal (`/`) ahora es el diseño **NovoClip** (carpeta `web/`, ya compilado: no hace falta instalar nada).

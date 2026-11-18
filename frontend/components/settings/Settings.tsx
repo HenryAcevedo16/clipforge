@@ -174,7 +174,7 @@ export function Settings() {
               )}
               {src !== "claude_api" && (
                 <Field label="Modelo de Gemini" hint="Déjalo así si no sabes cuál poner">
-                  {(a) => <input {...a} value={gmodel ?? c.gemini_model ?? ""} onChange={(e) => setGmodel(e.target.value)} placeholder="gemini-flash-latest" className={inputClass} />}
+                  {(a) => <input {...a} value={gmodel ?? c.gemini_model ?? ""} onChange={(e) => setGmodel(e.target.value)} placeholder="gemini-4-hydrogen" className={inputClass} />}
                 </Field>
               )}
               {src !== "claude_api" && (

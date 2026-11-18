@@ -1018,7 +1018,21 @@ def _claude_cli() -> Optional[str]:
 
 
 CONFIG_PATH = ROOT / "config.json"
-GEMINI_DEFAULT_MODEL = "gemini-flash-latest"
+GEMINI_DEFAULT_MODEL = "gemini-4-hydrogen"   # Gemini 4 rápido y barato (según la lista de modelos de aistudio.google.com/docs/models)
+# Orden de preferencia para este programa (elegir momentos y mirar imágenes con salida JSON): rápidos y baratos primero.
+GEMINI_PREFERRED = ("gemini-4-hydrogen", "gemini-4-argon", "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash",
+                    "gemini-3.1-flash-lite", "gemini-3-flash")
+GEMINI_SKIP = ("embedding", "image", "tts", "audio", "live", "robotics", "computer-use", "aqa", "thinking-exp",
+               "omni", "transcribe", "translate", "banana", "veo", "imagen")
+
+
+def gemini_rank(name: str):
+    """Orden para elegir modelo: los preferidos primero; después Flash, Flash-Lite y Pro; Carbon (el más caro) al final."""
+    if name in GEMINI_PREFERRED:
+        return (0, GEMINI_PREFERRED.index(name), name)
+    n = name.lower()
+    tier = 1 if ("flash" in n and "lite" not in n) else 2 if "lite" in n else 4 if "carbon" in n else 3
+    return (tier, 0 if "latest" in n else 1, name)
 _AI_PROVIDER = "auto"     # IA elegida para este trabajo ("auto" = la de Ajustes); ver AI_SOURCES
 AI_SOURCES = ("auto", "cli", "claude_api", "gemini", "incluida")
 
@@ -1251,11 +1265,9 @@ def _ask_gemini(prompt: str, schema, images: Optional[list] = None, key: Optiona
             for mm in client.models.list():
                 acts = getattr(mm, "supported_actions", None) or []
                 nm = (getattr(mm, "name", "") or "").replace("models/", "")
-                if "generateContent" in acts and nm.startswith("gemini") and not any(
-                        x in nm for x in ("embedding", "image", "tts", "audio", "live", "robotics", "computer-use", "aqa", "thinking-exp")):
+                if "generateContent" in acts and nm.startswith("gemini") and not any(x in nm for x in GEMINI_SKIP):
                     names.append(nm)
-            rank = lambda n: (0 if ("flash" in n and "lite" not in n) else 1 if "lite" in n else 2, 0 if "latest" in n else 1, n)  # noqa: E731
-            return sorted(names, key=rank)[:5]
+            return sorted(names, key=gemini_rank)[:5]
         except Exception:   # noqa: BLE001
             return []
 
@@ -4176,7 +4188,7 @@ def gemini_models() -> list:
             name = (getattr(m, "name", "") or "").replace("models/", "")
             if "generateContent" not in acts or not name.startswith("gemini"):
                 continue
-            if any(x in name for x in ("embedding", "image", "tts", "audio", "live", "robotics", "computer-use", "aqa")):
+            if any(x in name for x in GEMINI_SKIP):
                 continue
             out.append({"name": name, "label": getattr(m, "display_name", "") or name,
                         "description": (getattr(m, "description", "") or "")[:140],
@@ -4184,8 +4196,4 @@ def gemini_models() -> list:
     except Exception as e:   # noqa: BLE001
         raise RuntimeError(f"Google no respondió ({str(e)[:160]}). Revisa que la clave sea correcta.")
 
-    def rank(m: dict):
-        n = m["name"]
-        return (0 if "flash" in n and "lite" not in n else 1 if "lite" in n else 2 if "pro" in n else 3,
-                0 if ("latest" in n) else 1, n)
-    return sorted(out, key=rank)
+    return sorted(out, key=lambda m: gemini_rank(m["name"]))
