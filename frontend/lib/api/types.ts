@@ -110,6 +110,7 @@ export interface JobResult {
   source: SourceMeta;
   clips: ClipResult[];
   live?: boolean; // directo: los clips van apareciendo
+  selection?: { mode: "ia" | "basico" | "manual"; reason: string }; // cómo se eligieron los clips
   partial?: boolean; // todavía hay clips por generar
   total?: number;
 }

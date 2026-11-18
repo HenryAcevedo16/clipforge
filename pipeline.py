@@ -1457,6 +1457,7 @@ def select_ai(tr: dict, opts: Options, video_title: str = "", src: Optional[Path
     if hot:
         listing += "\n(🔥 = en ese momento el chat del directo se disparó: suele ser un momento que gustó al público)"
     want = opts.num_clips
+    ask_n = min(max(want * 2, want + 3), 24)    # se piden más candidatos y se queda con los mejores: elegir entre más da mejores clips
     prompt = f"""Eres el mejor editor de clips virales de TikTok, YouTube Shorts e Instagram Reels.
 Tu trabajo: encontrar en este video largo los momentos que harían que alguien deje de hacer scroll,
 vea hasta el final, comente y comparta.
@@ -1465,13 +1466,14 @@ Video: "{video_title}"
 Transcripción en frases (índice [inicio-fin en segundos] texto). ⚡ = la voz sube de energía (gritos, risas, emoción):
 {listing}
 
-Elige los MEJORES clips (máximo {want}). Cómo piensa un buen editor:
+Elige los MEJORES clips: devuelve entre {want} y {ask_n} candidatos (los mejores primero). Cómo piensa un buen editor:
 1. GANCHO: la primera frase del clip tiene que atrapar sola: una pregunta intrigante, una afirmación fuerte o
    polémica, una cifra sorprendente, el inicio de una historia ("El día que...") o un momento de emoción.
    Si el gancho está en medio de una idea, empieza AHÍ, no antes. Nunca empieces con relleno ("bueno", "y", "entonces",
    saludos, "como les decía").
-2. AUTONOMÍA: alguien que nunca vio el video lo tiene que entender. Evita clips que dependan de algo dicho antes
-   ("eso que dije", "lo de antes").
+2. AUTONOMÍA (lo más importante para que el clip TENGA SENTIDO): alguien que nunca vio el video lo tiene que entender de
+   principio a fin. Descarta fragmentos de conversación sueltos, respuestas sin su pregunta, chistes que dependen de algo
+   dicho antes ("eso que dije", "lo de antes") y partes donde se habla de algo que no se explica en el propio clip.
 3. ARCO: gancho → desarrollo → remate. EL FINAL IMPORTA TANTO COMO EL GANCHO: el clip termina cuando la idea,
    la historia o el argumento YA QUEDÓ CERRADO (conclusión, punchline, frase memorable o cambio claro de tema).
    NUNCA termines mientras la persona sigue explicando: si la frase siguiente continúa o completa lo anterior
@@ -1484,12 +1486,14 @@ Elige los MEJORES clips (máximo {want}). Cómo piensa un buen editor:
 5. DESCARTA: intro, despedidas, patrocinios, "suscríbete", partes técnicas aburridas, silencios, repeticiones.
 6. VARIEDAD: cada clip sobre un tema o momento distinto.
 
-Puntuación (virality_score 0-100). Sé duro y usa todo el rango; un montón de notas de 80 y pico no sirve para ordenar:
+Puntuación (virality_score 0-100). La nota es RELATIVA a ESTE video: el mejor momento que haya merece una nota alta si de
+verdad funciona como clip; no lo castigues por no ser un viral perfecto. Usa todo el rango para poder ordenar:
 - 85-100: funcionaría de verdad. Gancho fuerte, arco completo y una frase que la gente repetiría.
-- 70-84: sólido. Hay remate real, el gancho podría ser mejor.
+- 70-84: sólido. Se entiende solo y tiene remate; el gancho podría ser mejor.
 - 50-69: se deja ver pero no destaca.
-- Menos de 50: NO lo devuelvas.
-Como máximo {want} clips, pero devuelve MENOS si no hay tantos momentos buenos: es mejor 2 clips excelentes que
+- Menos de 50 o que NO se entienda solo: NO lo devuelvas.
+Las notas parciales (gancho, emoción, valor, autonomía, remate) son de 0 a 10 y tienen que ser coherentes con la global.
+Devuelve hasta {ask_n} candidatos, pero MENOS si no hay tantos momentos buenos: es mejor 2 clips excelentes que
 {want} de relleno. No alargues un clip para llegar a una duración ni juntes dos momentos sin relación.
 
 Reglas:
@@ -1504,7 +1508,17 @@ Reglas:
 
     clips: list[Clip] = []
     used: list = []
-    for c in sorted(result.clips, key=lambda x: -x.virality_score):
+
+    def blend(c) -> int:
+        """Nota final: la global de la IA mezclada con sus notas parciales (así una nota global inflada no manda sola)."""
+        q = 0.30 * c.gancho + 0.20 * c.emocion + 0.15 * c.valor + 0.20 * c.autonomia + 0.15 * c.remate
+        return int(round(0.5 * c.virality_score + 5.0 * q))
+
+    ranked = sorted(result.clips, key=lambda x: -blend(x))
+    # un clip "sin sentido" casi siempre tiene poca autonomía, no cierra o no engancha: se descartan primero
+    strict = [c for c in ranked if c.autonomia >= 6 and c.remate >= 5 and c.gancho >= 5]
+    pool = strict if strict else ranked
+    for c in pool:
         i = max(0, min(c.start_line, len(lines) - 1))
         j = max(i, min(c.end_line, len(lines) - 1))
         # Ajustar a la duración pedida
@@ -1513,7 +1527,7 @@ Reglas:
         while j < len(lines) - 1 and lines[j]["e"] - lines[i]["s"] < opts.min_len * 0.9:
             j += 1
         rng = (lines[i]["s"], lines[j]["e"])
-        if c.virality_score < 50 or any(_overlaps(rng, u, gap=0.5) for u in used):
+        if blend(c) < 50 or any(_overlaps(rng, u, gap=0.5) for u in used):
             continue
         used.append(rng)
         kws = [_norm(k) for kw in c.keywords for k in kw.split() if _norm(k)]
@@ -1528,7 +1542,7 @@ Reglas:
                         start_t = cand[k]["s"]
                     break
         clips.append(Clip(index=len(clips) + 1, start=max(0, start_t - 0.1), end=rng[1] + 0.35,
-                          title=c.title, hook=c.hook, score=c.virality_score, reason=c.reason,
+                          title=c.title, hook=c.hook, score=blend(c), reason=c.reason,
                           caption=c.caption, hashtags=[h if h.startswith("#") else "#" + h for h in c.hashtags],
                           keywords=kws[:10]))
         if len(clips) >= want:
@@ -1750,9 +1764,14 @@ def snap_to_silence(src: Path, clips: list) -> list:
     return clips
 
 
+LAST_SELECTION: dict = {}
+
+
 def select_clips(src: Path, tr: dict, opts: Options, title: str, progress: ProgressFn = _noop) -> list[Clip]:
     global _AI_NOTIFY
     _AI_NOTIFY = progress
+    LAST_SELECTION.clear()
+    LAST_SELECTION.update(mode="ia", reason="")
     backend = ai_backend() if opts.use_ai else None
     clips: list[Clip] = []
     if backend:
@@ -1774,9 +1793,13 @@ def select_clips(src: Path, tr: dict, opts: Options, title: str, progress: Progr
                     progress(43.3, f"No se pudo revisar los finales con IA ({str(e)[:80]}).")
         except Exception as e:  # cae al algoritmo local
             progress(42, f"IA no disponible ({str(e)[:80]}), usando algoritmo local...")
+            LAST_SELECTION.update(mode="basico", reason=f"La IA falló: {str(e)[:160]}")
     if clips and len(clips) < opts.num_clips:
         progress(43.5, f"La IA solo encontró {len(clips)} momento(s) realmente bueno(s): no se rellena con clips flojos.")
     if not clips:
+        if LAST_SELECTION.get("mode") != "basico":
+            LAST_SELECTION.update(mode="basico", reason="La IA no encontró momentos que valgan la pena." if backend else
+                                  ("Desactivaste la IA para elegir momentos." if not opts.use_ai else "No hay una IA activa (Ajustes → Inteligencia artificial)."))
         progress(43, "Analizando energía, ganchos y ritmo...")
         extra = select_heuristic(src, tr, opts)
         for c in extra:
@@ -3499,9 +3522,10 @@ def process(source: str, workdir: Path, opts: Options, progress: ProgressFn = _n
         done.append(c)
         if on_update:                           # el clip aparece en la página en cuanto está listo
             on_update({"title": title, "language": tr.get("language"), "source": meta, "scene": scene or {},
-                       "partial": True, "total": len(clips),
+                       "partial": True, "total": len(clips), "selection": dict(LAST_SELECTION),
                        "clips": [dict(asdict(x), duration=round(x.out_duration or x.duration, 2)) for x in done]})
     result = {"title": title, "language": tr.get("language"), "source": meta, "scene": scene or {},
+              "selection": dict(LAST_SELECTION) if not manual else {"mode": "manual", "reason": ""},
               "clips": [dict(asdict(c), duration=round(c.out_duration or c.duration, 2)) for c in done]}
     (workdir / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     progress(100, f"¡Listo! {len(done)} clips generados.")

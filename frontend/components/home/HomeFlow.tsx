@@ -13,6 +13,7 @@ import { PlatformPill } from "../ui/PlatformPill";
 import { ClipEditor } from "../projects/ClipEditor";
 import { PublishDialog } from "../projects/PublishDialog";
 import { ClipCard } from "../projects/ClipCard";
+import { SelectionNotice } from "../projects/SelectionNotice";
 import { FramingPreview } from "./FramingPreview";
 import { ClipPreview } from "../brand/ClipPreview";
 import { Button } from "../ui/Button";
@@ -784,6 +785,7 @@ function ResultStep({ job, saving, onSend, onAgain, onEdit, onChanged }: { job: 
       </div>
       {!empty && (
         <div className="flex flex-col gap-5">
+          <SelectionNotice selection={r.selection} />
           {r.clips.map((c) => (
             <ClipCard key={c.file} jobId={job.id} c={c} onEdit={onEdit ? () => onEdit(c.index) : undefined} onChanged={onChanged} />
           ))}

@@ -14,6 +14,7 @@ import { Button, buttonClass } from "../ui/Button";
 import { EmptyState, ErrorState, LoadingLabel, Skeleton } from "../ui/States";
 import { useToast } from "../ui/Toast";
 import { ClipCard } from "./ClipCard";
+import { SelectionNotice } from "./SelectionNotice";
 import { ClipEditor } from "./ClipEditor";
 import { STATE_META } from "./projectMeta";
 
@@ -145,6 +146,7 @@ export function ProjectDetail({ id }: { id: string }) {
 
       {(state === "done" || ((state === "running" || state === "error") && clips.length > 0)) && (
         <section aria-label="Clips" className={state === "running" || state === "error" ? "mt-8" : undefined}>
+          <SelectionNotice selection={job.result?.selection} />
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">
               <span className="tnum">{clips.length}</span> {job.result?.partial && job.result.total ? `de ${job.result.total} clips listos` : clips.length === 1 ? "clip" : "clips"}

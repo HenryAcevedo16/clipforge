@@ -243,3 +243,9 @@ Con Gemini, la **revisión con IA** ya no mira solo 9 fotogramas: recibe el **vi
 ## ⏱️ Tú eliges los segundos + "Optimizar con IA"
 1. **Elegir los cortes tú:** en el paso 2, "¿Quién elige los cortes?" → **Yo elijo los segundos**. Escribes inicio y fin de cada clip (`1:20` a `1:55`, o en segundos) y la app los hace **exactamente** con esos segundos: no los mueve, no quita silencios y solo transcribe esos tramos (rápido aunque el video sea largo). La IA, si hay, solo escribe título, gancho, descripción y hashtags.
 2. **Optimizar con IA:** cada clip tiene el botón **Optimizar con IA**. La IA activa (Gemini, Claude o tu suscripción) afina el inicio y el final (que empiece en el gancho y termine cuando la idea queda cerrada), y reescribe título, gancho, descripción, hashtags y palabras clave. Te explica qué cambió y puedes **Deshacer** para volver a como estaba.
+
+## 🎯 Clips con más sentido y notas más justas
+- La IA ahora propone **más candidatos** (el doble de los que pides) y la app se queda con los mejores.
+- **Descarta lo que no tiene sentido:** un clip que no se entiende solo (poca "autonomía"), no cierra la idea o no engancha se quita antes de entregártelo.
+- **La nota final** mezcla la nota global de la IA con sus notas parciales (gancho, emoción, valor, autonomía, remate) y es **relativa a ese video**.
+- Si los clips los eligió el **método básico** (sin IA, porque no hay IA activa o falló), aparece un aviso en amarillo explicando por qué las notas son bajas y qué hacer.
