@@ -97,6 +97,9 @@ export const realApi: Api = {
       body: JSON.stringify(edits),
     }),
 
+  async updateClipMeta(jobId, index, meta) {
+    await request(`/api/jobs/${encodeURIComponent(jobId)}/clips/${index}/meta`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(meta) });
+  },
   async deleteClip(jobId, index) {
     await request(`/api/jobs/${encodeURIComponent(jobId)}/clips/${index}`, { method: "DELETE" });
   },

@@ -3444,6 +3444,26 @@ def rerender_clip(workdir: Path, index: int, edits: dict, progress: ProgressFn =
     return res
 
 
+def update_clip_meta(workdir: Path, index: int, meta: dict) -> dict:
+    """Guarda al instante el título, la descripción y los hashtags de un clip (no hace falta volver a generar el video:
+    esos textos son para publicar). El titular que va dentro del video sí necesita volver a generar."""
+    res_path = workdir / "result.json"
+    res = json.loads(res_path.read_text(encoding="utf-8"))
+    pos = next((k for k, x in enumerate(res["clips"]) if int(x["index"]) == int(index)), None)
+    if pos is None:
+        raise KeyError("clip no encontrado")
+    c = res["clips"][pos]
+    for k in ("title", "caption"):
+        if meta.get(k) is not None:
+            c[k] = str(meta[k]).strip()
+    if meta.get("hashtags") is not None:
+        tags = meta["hashtags"] if isinstance(meta["hashtags"], list) else str(meta["hashtags"]).split()
+        c["hashtags"] = [t if t.startswith("#") else "#" + t for t in (str(x).strip() for x in tags) if t]
+    c["meta_edited"] = True
+    res_path.write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+    return res
+
+
 def delete_clip(workdir: Path, index: int) -> dict:
     res_path = workdir / "result.json"
     res = json.loads(res_path.read_text(encoding="utf-8"))

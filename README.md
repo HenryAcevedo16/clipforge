@@ -223,3 +223,9 @@ Un clip no debe cortarse mientras quien habla sigue explicando. Ahora hay tres c
 3. **Red de seguridad sin IA:** si el corte cae a mitad de frase, el clip se alarga hasta el siguiente punto y, si la frase siguiente es una continuación, también la incluye, sin pasar del máximo.
 
 Se puede apagar en el paso 2 con **"Terminar siempre la idea"**.
+
+## ✏️ Editar cada clip después de generarlo
+En **Mis proyectos → tu proyecto**, cada clip tiene:
+- **Título y hashtags:** edición rápida, se guarda al instante (no vuelve a generar el video).
+- **Editar corte:** recortar con deslizadores, corregir palabras, resaltar, cambiar titular, encuadre y efectos, y "Volver a generar".
+También se ven y se editan los clips que sí se generaron aunque el trabajo haya terminado con error.

@@ -1,6 +1,6 @@
 "use client";
 import { Card } from "@heroui/react";
-import { CalendarClock, Check, ChevronDown, Copy, Download, Scissors, Send, TriangleAlert } from "lucide-react";
+import { CalendarClock, Check, ChevronDown, Copy, Download, Pencil, Scissors, Send, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { api, type ClipResult, type ClipReview } from "@/lib/api";
@@ -104,11 +104,28 @@ export function clipText(c: ClipResult) {
 }
 
 /** Clip estilo OpusClip: video vertical a la izquierda; a la derecha título, potencial viral, gancho, hashtags, nota de la IA y acciones. */
-export function ClipCard({ jobId, c, onEdit }: { jobId: string; c: ClipResult; onEdit?: () => void }) {
+export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: ClipResult; onEdit?: () => void; onChanged?: () => void }) {
   const rev = c.rev ?? 0;
   const toast = useToast();
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [quick, setQuick] = useState(false); // edición rápida de título y hashtags
+  const [title, setTitle] = useState(c.title);
+  const [tags, setTags] = useState(c.hashtags.join(" "));
+  const [saving, setSaving] = useState(false);
+  const saveMeta = async () => {
+    setSaving(true);
+    try {
+      await api.updateClipMeta(jobId, c.index, { title: title.trim() || c.title, hashtags: tags.split(/\s+/).filter(Boolean) });
+      toast("Guardado.");
+      setQuick(false);
+      onChanged?.();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "No se pudo guardar.", "bad");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const copy = async () => {
     try {
@@ -133,10 +150,21 @@ export function ClipCard({ jobId, c, onEdit }: { jobId: string; c: ClipResult; o
             {Math.round(c.score)}
           </span>
           <div className="min-w-0">
+            {quick ? (
+              <div className="flex flex-col gap-2">
+                <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Título del clip" className="min-h-11 w-full rounded-xl border border-line bg-raised-2 px-3 text-base font-bold text-ink focus-visible:outline-2 focus-visible:outline-accent-hi" />
+                <input value={tags} onChange={(e) => setTags(e.target.value)} aria-label="Hashtags (separados por espacios)" placeholder="#hashtag1 #hashtag2" className="min-h-11 w-full rounded-xl border border-line bg-raised-2 px-3 text-sm text-ink focus-visible:outline-2 focus-visible:outline-accent-hi" />
+                <div className="flex gap-2">
+                  <Button size="sm" variant="primary" onClick={saveMeta} loading={saving}>Guardar</Button>
+                  <Button size="sm" onClick={() => { setQuick(false); setTitle(c.title); setTags(c.hashtags.join(" ")); }}>Cancelar</Button>
+                </div>
+              </div>
+            ) : (
             <h3 className="line-clamp-3 text-lg font-extrabold leading-snug [overflow-wrap:anywhere]">
               {c.title}
-              {c.edited && <span className="ml-2 align-middle text-xs font-semibold text-ink-3">(editado)</span>}
+              {(c.edited || c.meta_edited) && <span className="ml-2 align-middle text-xs font-semibold text-ink-3">(editado)</span>}
             </h3>
+            )}
             <p className="mt-0.5 text-sm text-ink-3">
               Potencial viral · {formatDuration(c.start)}–{formatDuration(c.end)} del video
             </p>
@@ -160,6 +188,9 @@ export function ClipCard({ jobId, c, onEdit }: { jobId: string; c: ClipResult; o
         )}
         <ReviewPanel review={c.review} />
         <div className="mt-auto flex flex-wrap gap-2 pt-1">
+          <Button size="sm" onClick={() => { setTitle(c.title); setTags(c.hashtags.join(" ")); setQuick(true); }} icon={<Pencil className="size-4" aria-hidden />} className="max-sm:flex-1">
+            Título y hashtags
+          </Button>
           <Button size="sm" variant="primary" onClick={() => setPublishing(true)} icon={<Send className="size-4" aria-hidden />} className="max-sm:w-full">
             Publicar
           </Button>

@@ -193,6 +193,9 @@ export const mockApi: Api = {
   async renderClip() {
     return { id: "mock-render" };
   },
+  async updateClipMeta() {
+    /* simulado */
+  },
   async deleteClip() {
     /* simulado */
   },

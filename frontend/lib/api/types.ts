@@ -87,6 +87,7 @@ export interface ClipResult {
   keywords?: string[];
   layout?: string;
   edited?: boolean;
+  meta_edited?: boolean; // título/hashtags cambiados a mano
   rev?: number; // versión del archivo: cambia cada vez que se vuelve a generar el clip
 }
 
@@ -346,6 +347,8 @@ export interface Api {
   getClipEdit(jobId: string, index: number): Promise<ClipEditData>;
   renderClip(jobId: string, index: number, edits: ClipEdits): Promise<{ id: string }>;
   deleteClip(jobId: string, index: number): Promise<void>;
+  /** Guarda al instante título, descripción y hashtags (sin volver a generar el video). */
+  updateClipMeta(jobId: string, index: number, meta: { title?: string; caption?: string; hashtags?: string[] }): Promise<void>;
   fileUrl(jobId: string, name: string, opts?: { download?: boolean }): string;
   // ❌ requiere backend nuevo
   listProjects(): Promise<Project[]>;

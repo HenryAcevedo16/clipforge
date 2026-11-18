@@ -498,6 +498,17 @@ async def clip_rerender(job_id: str, index: int, request: Request):
     return {"id": sub}
 
 
+@app.patch("/api/jobs/{job_id}/clips/{index}/meta")
+async def clip_meta(job_id: str, index: int, request: Request):
+    """Guarda al instante título, descripción y hashtags (sin volver a generar el video)."""
+    data = await request.json()
+    try:
+        pipeline.update_clip_meta(_job_dir(job_id), index, data)
+    except KeyError:
+        raise HTTPException(404, "Clip no encontrado")
+    return _refresh_result(job_id)
+
+
 @app.delete("/api/jobs/{job_id}/clips/{index}")
 def clip_delete(job_id: str, index: int):
     pipeline.delete_clip(_job_dir(job_id), index)

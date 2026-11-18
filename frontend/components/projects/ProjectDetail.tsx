@@ -143,8 +143,8 @@ export function ProjectDetail({ id }: { id: string }) {
         <EmptyState icon={<Film />} title="Este video no dio ningún clip" text="No encontramos partes con voz para recortar. Prueba con otro video o con duraciones distintas." action={<Link href="/" className={buttonClass({ variant: "primary" })}>Procesar otro video</Link>} />
       )}
 
-      {(state === "done" || (state === "running" && clips.length > 0)) && (
-        <section aria-label="Clips" className={state === "running" ? "mt-8" : undefined}>
+      {(state === "done" || ((state === "running" || state === "error") && clips.length > 0)) && (
+        <section aria-label="Clips" className={state === "running" || state === "error" ? "mt-8" : undefined}>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">
               <span className="tnum">{clips.length}</span> {job.result?.partial && job.result.total ? `de ${job.result.total} clips listos` : clips.length === 1 ? "clip" : "clips"}
@@ -161,7 +161,7 @@ export function ProjectDetail({ id }: { id: string }) {
           </div>
           <div className="flex flex-col gap-5">
             {clips.map((c) => (
-              <ClipCard key={c.file} jobId={job.id} c={c} onEdit={!job.result?.live ? () => setEditing(c.index) : undefined} />
+              <ClipCard key={c.file} jobId={job.id} c={c} onEdit={!job.result?.live ? () => setEditing(c.index) : undefined} onChanged={() => res.reload(true)} />
             ))}
           </div>
         </section>

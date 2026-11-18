@@ -1,5 +1,5 @@
 "use client";
-import { Eraser, Highlighter, Loader2, Scissors, SpellCheck, Trash2 } from "lucide-react";
+import { Check, Eraser, Highlighter, Loader2, Scissors, SpellCheck, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, type ClipEditData, type ClipToggles, type EditWord } from "@/lib/api";
 import { formatDuration } from "@/lib/time";
@@ -201,6 +201,16 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
     }
   };
 
+  const saveText = async () => {
+    try {
+      await api.updateClipMeta(jobId, index, { title, caption, hashtags: tags.split(/\s+/).filter(Boolean) });
+      toast("Título, descripción y hashtags guardados.");
+      onChanged();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "No se pudo guardar.", "bad");
+    }
+  };
+
   const remove = async () => {
     if (!confirmDel) {
       setConfirmDel(true);
@@ -232,8 +242,11 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
             <Button variant="danger" onClick={remove} icon={<Trash2 className="size-4" aria-hidden />} disabled={busy}>
               {confirmDel ? "¿Seguro? Pulsa otra vez" : "Eliminar clip"}
             </Button>
+            <Button onClick={saveText} disabled={busy} icon={<Check className="size-4" aria-hidden />}>
+              Guardar título y hashtags
+            </Button>
             <Button variant="primary" onClick={regenerate} loading={busy} icon={<Scissors className="size-4" aria-hidden />}>
-              Volver a generar este clip
+              Volver a generar (recorte y efectos)
             </Button>
           </>
         ) : undefined
