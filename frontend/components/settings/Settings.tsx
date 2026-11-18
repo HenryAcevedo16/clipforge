@@ -31,6 +31,18 @@ export function Settings() {
   const [akey, setAkey] = useState("");
   const [lic, setLic] = useState("");
   const [saving, setSaving] = useState(false);
+  const [models, setModels] = useState<{ name: string; label: string; description: string; limit: number | null }[] | null>(null);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const loadModels = async () => {
+    setLoadingModels(true);
+    try {
+      setModels((await api.getGeminiModels()).models);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "No pude consultar los modelos.", "bad");
+    } finally {
+      setLoadingModels(false);
+    }
+  };
 
   const save = async (s: Parameters<typeof api.saveSettings>[0], ok: string) => {
     setSaving(true);
@@ -164,6 +176,27 @@ export function Settings() {
                 <Field label="Modelo de Gemini" hint="Déjalo así si no sabes cuál poner">
                   {(a) => <input {...a} value={gmodel ?? c.gemini_model ?? ""} onChange={(e) => setGmodel(e.target.value)} placeholder="gemini-flash-latest" className={inputClass} />}
                 </Field>
+              )}
+              {src !== "claude_api" && (
+                <div className="flex flex-col gap-2 sm:col-span-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button size="sm" onClick={loadModels} loading={loadingModels} disabled={!c.gemini}>Ver los modelos que puede usar mi clave</Button>
+                    {!c.gemini && <span className="text-[13px] text-ink-3">Primero guarda tu clave de Gemini.</span>}
+                  </div>
+                  {models && (
+                    <ul className="grid gap-1.5 sm:grid-cols-2">
+                      {models.map((m) => (
+                        <li key={m.name}>
+                          <button type="button" onClick={() => { setGmodel(m.name); save({ gemini_model: m.name }, `Modelo: ${m.name}`); }} className={cn("flex w-full flex-col items-start rounded-xl border px-3 py-2 text-left transition-colors hover:border-accent-hi", (gmodel ?? c.gemini_model) === m.name ? "border-accent bg-accent-soft" : "border-line bg-raised-2/50")}>
+                            <span className="font-bold [overflow-wrap:anywhere]">{m.name}</span>
+                            <span className="text-[13px] text-ink-3">{m.label}{m.limit ? ` · ${Math.round(m.limit / 1000)}k tokens` : ""}</span>
+                          </button>
+                        </li>
+                      ))}
+                      {models.length === 0 && <li className="text-sm text-ink-3">Tu clave no devolvió modelos de texto.</li>}
+                    </ul>
+                  )}
+                </div>
               )}
               {src !== "gemini" && (
                 <Field label="Clave de la API de Claude" hint={c.anthropic ? "Guardada. Pega otra para cambiarla." : "console.anthropic.com · se paga aparte"} className="sm:col-span-2">

@@ -47,6 +47,7 @@ export const realApi: Api = {
 
   getConfig: () => request<Config>("/api/config"),
   getDiagnostics: () => request("/api/diagnostics"),
+  getGeminiModels: () => request("/api/gemini/models"),
   previewFraming(input) {
     const fd = new FormData();
     if (input.url) fd.set("url", input.url);

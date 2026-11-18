@@ -233,3 +233,6 @@ También se ven y se editan los clips que sí se generaron aunque el trabajo hay
 
 ## 📷 Calidad de la webcam del streamer
 La webcam de un stream es pequeña y estirarla a 1080 px la dejaba borrosa. Ahora el encuadre de la webcam se aleja hasta que no se amplíe más de 2 veces (se ve más del recuadro y menos "la cara pegada a la cámara"). Ahora el panel de la webcam se limpia (reduce los bloques de compresión), se amplía con Lanczos y se afina. Si la webcam es tan pequeña que habría que ampliarla más de 3,2 veces, se muestra nítida y centrada sobre su propio fondo difuminado, en vez de estirarla de borde a borde. Para más nitidez, descarga el video con "La mejor" resolución (paso 2 → Origen del video).
+
+## 🔎 Qué modelo de Gemini puede usar mi clave
+En **Ajustes → Inteligencia artificial → Gemini**, pulsa **"Ver los modelos que puede usar mi clave"**: la app le pregunta a Google y lista los modelos de texto disponibles (Flash primero). Toca uno para usarlo.

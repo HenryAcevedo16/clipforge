@@ -343,6 +343,7 @@ export interface Api {
   cancelJob(id: string): Promise<void>;
   saveSettings(s: SettingsInput): Promise<Config>;
   getDiagnostics(): Promise<DiagItem[]>;
+  getGeminiModels(): Promise<{ models: { name: string; label: string; description: string; limit: number | null }[]; current: string }>;
   previewFraming(input: PreviewInput): Promise<{ id: string }>;
   getClipEdit(jobId: string, index: number): Promise<ClipEditData>;
   renderClip(jobId: string, index: number, edits: Partial<ClipEdits>): Promise<{ id: string }>;

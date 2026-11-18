@@ -4100,3 +4100,35 @@ def preview_framing(source: str, workdir: Path, opts: Options, at: float = 0.35,
     progress(100, "Muestra lista.")
     return dict(asdict(c), duration=round(c.out_duration or c.duration, 2), rev=int(time.time()),
                 moment=round(t0, 1), scene_type=(scene or {}).get("tipo"))
+
+
+def gemini_models() -> list:
+    """Modelos de Gemini que puede usar la clave guardada (los que sirven para generar texto), recomendados primero."""
+    key = gemini_key()
+    if not key:
+        raise RuntimeError("Primero guarda tu clave de Gemini.")
+    try:
+        from google import genai
+    except ImportError:
+        raise RuntimeError("Falta la librería de Gemini: ejecuta  .venv\\Scripts\\pip install google-genai")
+    try:
+        client = genai.Client(api_key=key)
+        out = []
+        for m in client.models.list():
+            acts = getattr(m, "supported_actions", None) or []
+            name = (getattr(m, "name", "") or "").replace("models/", "")
+            if "generateContent" not in acts or not name.startswith("gemini"):
+                continue
+            if any(x in name for x in ("embedding", "image", "tts", "audio", "live", "robotics", "computer-use", "aqa")):
+                continue
+            out.append({"name": name, "label": getattr(m, "display_name", "") or name,
+                        "description": (getattr(m, "description", "") or "")[:140],
+                        "limit": getattr(m, "input_token_limit", None)})
+    except Exception as e:   # noqa: BLE001
+        raise RuntimeError(f"Google no respondió ({str(e)[:160]}). Revisa que la clave sea correcta.")
+
+    def rank(m: dict):
+        n = m["name"]
+        return (0 if "flash" in n and "lite" not in n else 1 if "lite" in n else 2 if "pro" in n else 3,
+                0 if ("latest" in n) else 1, n)
+    return sorted(out, key=rank)

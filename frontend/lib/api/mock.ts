@@ -140,6 +140,9 @@ export const mockApi: Api = {
   async previewFraming() {
     throw new ApiError("La vista previa solo funciona con el servidor real.");
   },
+  async getGeminiModels() {
+    return { models: [{ name: "gemini-flash-latest", label: "Gemini Flash", description: "simulado", limit: null }], current: "gemini-flash-latest" };
+  },
   async getDiagnostics() {
     return [{ id: "ffmpeg", name: "FFmpeg", status: "ok" as const, detail: "simulado", fix: "" }];
   },

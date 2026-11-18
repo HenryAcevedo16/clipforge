@@ -425,6 +425,15 @@ def config(refresh: int = 0):
             "aspects": list(pipeline.ASPECTS)}
 
 
+@app.get("/api/gemini/models")
+def gemini_models():
+    """Modelos de Gemini disponibles con la clave guardada."""
+    try:
+        return {"models": pipeline.gemini_models(), "current": pipeline.gemini_model()}
+    except RuntimeError as e:
+        raise HTTPException(400, str(e))
+
+
 @app.get("/api/diagnostics")
 def diagnostics():
     return pipeline.diagnostics(JOBS_DIR)
