@@ -12,6 +12,7 @@ import { detectPlatform, SUPPORTED_TEXT } from "@/lib/platform";
 import { PlatformPill } from "../ui/PlatformPill";
 import { ClipEditor } from "../projects/ClipEditor";
 import { PublishDialog } from "../projects/PublishDialog";
+import { ClipCard } from "../projects/ClipCard";
 import { FramingPreview } from "./FramingPreview";
 import { ClipPreview } from "../brand/ClipPreview";
 import { Button } from "../ui/Button";
@@ -723,11 +724,11 @@ export function HomeFlow() {
               <p className="mb-3 text-sm text-ink-2">
                 Puedes editarlos mientras se generan los demás{job.result.live ? "" : " (los cambios se aplican cuando termine el trabajo actual)"}.
               </p>
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <div className="flex flex-col gap-5">
                 {job.result.clips.map((c) => (
-                  <ResultThumb key={c.file} jobId={job.id} c={c} onEdit={job.result?.live ? undefined : () => setEditing(c.index)} />
+                  <ClipCard key={c.file} jobId={job.id} c={c} onEdit={job.result?.live ? undefined : () => setEditing(c.index)} onChanged={refreshJob} />
                 ))}
-              </ul>
+              </div>
             </div>
           )}
 
@@ -748,7 +749,7 @@ export function HomeFlow() {
         </section>
       )}
 
-      {step === 4 && job?.result && <ResultStep job={job} saving={saving} onSend={() => sendToProjects("project")} onAgain={reset} onEdit={job.result.live ? undefined : setEditing} />}
+      {step === 4 && job?.result && <ResultStep job={job} saving={saving} onSend={() => sendToProjects("project")} onAgain={reset} onEdit={job.result.live ? undefined : setEditing} onChanged={refreshJob} />}
 
       {previewing && (
         <FramingPreview
@@ -762,7 +763,7 @@ export function HomeFlow() {
   );
 }
 
-function ResultStep({ job, saving, onSend, onAgain, onEdit }: { job: Job; saving: boolean; onSend: () => void; onAgain: () => void; onEdit?: (index: number) => void }) {
+function ResultStep({ job, saving, onSend, onAgain, onEdit, onChanged }: { job: Job; saving: boolean; onSend: () => void; onAgain: () => void; onEdit?: (index: number) => void; onChanged?: () => void }) {
   const r = job.result!;
   const empty = r.clips.length === 0;
   return (
@@ -782,13 +783,12 @@ function ResultStep({ job, saving, onSend, onAgain, onEdit }: { job: Job; saving
         </div>
       </div>
       {!empty && (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
-          {r.clips.slice(0, 10).map((c) => (
-            <ResultThumb key={c.file} jobId={job.id} c={c} onEdit={onEdit ? () => onEdit(c.index) : undefined} />
+        <div className="flex flex-col gap-5">
+          {r.clips.map((c) => (
+            <ClipCard key={c.file} jobId={job.id} c={c} onEdit={onEdit ? () => onEdit(c.index) : undefined} onChanged={onChanged} />
           ))}
-        </ul>
+        </div>
       )}
-      {r.clips.length > 10 && <p className="mt-4 text-sm text-ink-3">…y {r.clips.length - 10} más en Mis proyectos.</p>}
     </section>
   );
 }

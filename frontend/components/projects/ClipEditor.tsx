@@ -1,6 +1,7 @@
 "use client";
-import { Check, Eraser, Highlighter, Loader2, Scissors, SpellCheck, Trash2 } from "lucide-react";
+import { Check, Eraser, Highlighter, Sparkles, Loader2, Scissors, SpellCheck, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { waitJob } from "@/lib/api/wait";
 import { api, ApiError, type ClipEditData, type ClipToggles, type EditWord } from "@/lib/api";
 import { formatDuration } from "@/lib/time";
 import { Button } from "../ui/Button";
@@ -201,6 +202,27 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
     }
   };
 
+  const optimize = async () => {
+    setBusy(true);
+    setPct(0);
+    setMsg("La IA está optimizando el clip…");
+    try {
+      const { id } = await api.optimizeClip(jobId, index);
+      await waitJob(id, (p, m) => {
+        setPct(p);
+        setMsg(m);
+      }, () => alive.current);
+      if (!alive.current) return;
+      fill(await api.getClipEdit(jobId, index));
+      onChanged();
+      toast("Clip optimizado con IA. Revisa los cambios abajo.");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "No se pudo optimizar.", "bad");
+    } finally {
+      if (alive.current) setBusy(false);
+    }
+  };
+
   const saveText = async () => {
     try {
       await api.updateClipMeta(jobId, index, { title, caption, hashtags: tags.split(/\s+/).filter(Boolean) });
@@ -241,6 +263,9 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
           <>
             <Button variant="danger" onClick={remove} icon={<Trash2 className="size-4" aria-hidden />} disabled={busy}>
               {confirmDel ? "¿Seguro? Pulsa otra vez" : "Eliminar clip"}
+            </Button>
+            <Button onClick={optimize} disabled={busy} icon={<Sparkles className="size-4" aria-hidden />}>
+              Optimizar con IA
             </Button>
             <Button onClick={saveText} disabled={busy} icon={<Check className="size-4" aria-hidden />}>
               Guardar título y hashtags
