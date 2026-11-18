@@ -262,3 +262,7 @@ También se incluye [model-router](https://github.com/strikeout/model-router) (M
 ### Graphify (grafo de conocimiento del código)
 
 Se usa la skill [graphify](https://github.com/Graphify-Labs/graphify) (Apache-2.0). El grafo está en `graphify-out/` (`GRAPH_REPORT.md` para leer, `graph.html` para verlo en el navegador). Claude Code lo consulta antes de buscar en archivos. En tu PC: `pip install graphifyy && graphify install`, y tras cambiar código `graphify update .` (sin coste de IA). Lo excluido del grafo está en `.graphifyignore`.
+
+### Actualizar en Windows
+
+Haz doble clic en `actualizar_windows.bat`: baja la última versión de GitHub (no toca tus proyectos, claves ni modelos), instala lo que falte y muestra la versión. Después abre `iniciar_windows.bat` y pulsa Ctrl+F5 en el navegador.
