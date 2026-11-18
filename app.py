@@ -25,6 +25,26 @@ JOBS_DIR.mkdir(exist_ok=True)
 app = FastAPI(title="NovoClip")
 
 
+def _version() -> str:
+    """Commit de git de esta copia (sirve para saber si la app está actualizada)."""
+    try:
+        import subprocess
+        return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=str(ROOT), capture_output=True,
+                              text=True, timeout=5).stdout.strip() or "desconocida"
+    except Exception:
+        return "desconocida"
+
+
+@app.on_event("startup")
+def _anunciar_version() -> None:
+    print(f"NovoClip versión {_version()} · incluye: Optimizar con IA, Cambiar gancho, Título y hashtags, Publicar")
+
+
+@app.get("/api/version")
+def api_version():
+    return {"version": _version()}
+
+
 @app.middleware("http")
 async def _no_cache_pages(request: Request, call_next):
     """Las páginas de la app no se cachean (así una actualización se ve al recargar); los archivos
