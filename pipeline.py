@@ -1239,11 +1239,29 @@ def _ask_gemini(prompt: str, schema, images: Optional[list] = None, key: Optiona
         contents += [label, types.Part.from_bytes(data=data, mime_type="image/jpeg")]
     cfg = types.GenerateContentConfig(response_mime_type="application/json", response_schema=schema)
     models, last = [], None
-    for m in (model or gemini_model(), GEMINI_DEFAULT_MODEL, "gemini-2.5-flash"):
+    for m in (model or gemini_model(), GEMINI_DEFAULT_MODEL):
         if m not in models:
             models.append(m)
-    quota_hit = False
-    for m in models:
+    quota_hit, discovered, queue, tried = False, False, list(models), []
+
+    def discover() -> list:
+        """Google retira modelos con el tiempo (404 "no longer available"): se le pregunta qué modelos tiene hoy esta clave."""
+        try:
+            names = []
+            for mm in client.models.list():
+                acts = getattr(mm, "supported_actions", None) or []
+                nm = (getattr(mm, "name", "") or "").replace("models/", "")
+                if "generateContent" in acts and nm.startswith("gemini") and not any(
+                        x in nm for x in ("embedding", "image", "tts", "audio", "live", "robotics", "computer-use", "aqa", "thinking-exp")):
+                    names.append(nm)
+            rank = lambda n: (0 if ("flash" in n and "lite" not in n) else 1 if "lite" in n else 2, 0 if "latest" in n else 1, n)  # noqa: E731
+            return sorted(names, key=rank)[:5]
+        except Exception:   # noqa: BLE001
+            return []
+
+    while queue:
+        m = queue.pop(0)
+        tried.append(m)
         check_cancel()
         _ai_note(f"Gemini: consultando {m} (máx. {GEMINI_TIMEOUT_S} s)...")
         try:
@@ -1253,7 +1271,11 @@ def _ask_gemini(prompt: str, schema, images: Optional[list] = None, key: Optiona
             msg = str(e).lower()
             short = str(e).replace("\n", " ")[:110]
             if "not found" in msg or "404" in msg or "not supported" in msg:
-                _ai_note(f"Gemini: el modelo {m} no existe para tu clave; pruebo otro...")
+                _ai_note(f"Gemini: el modelo {m} ya no está disponible para tu clave; pruebo otro...")
+                if not discovered:
+                    discovered = True
+                    _ai_note("Gemini: consulto a Google qué modelos tiene disponibles tu clave hoy...")
+                    queue += [x for x in discover() if x not in tried and x not in queue]
                 continue          # ese nombre de modelo no existe en esta cuenta: probar el siguiente
             if "api key" in msg or "api_key" in msg or "401" in msg or "403" in msg or "permission" in msg:
                 raise RuntimeError("La clave de Gemini no es válida. Crea una en https://aistudio.google.com/apikey "
@@ -1266,6 +1288,12 @@ def _ask_gemini(prompt: str, schema, images: Optional[list] = None, key: Optiona
                 _ai_note(f"Gemini: {m} tardó demasiado o está saturado; pruebo otro modelo...")
                 continue
             raise
+        if key is None and m != (model or gemini_model()):      # este modelo sí funciona: se recuerda para la próxima vez
+            try:
+                save_config(gemini_model=m)
+                _ai_note(f"Gemini: uso {m} (queda guardado como tu modelo).")
+            except Exception:   # noqa: BLE001
+                pass
         parsed = getattr(resp, "parsed", None)
         if isinstance(parsed, schema):
             return parsed
@@ -1276,7 +1304,7 @@ def _ask_gemini(prompt: str, schema, images: Optional[list] = None, key: Optiona
     if quota_hit:
         raise RuntimeError("Gemini: se agotó la cuota gratuita por ahora en todos los modelos probados. Espera un rato, "
                            "elige otro modelo en Ajustes o usa Claude.")
-    raise RuntimeError(f"Gemini: ningún modelo respondió ({', '.join(models)}): {str(last)[:200]}")
+    raise RuntimeError(f"Gemini: ningún modelo respondió ({', '.join(tried)}): {str(last)[:200]}")
 
 
 def _extract_json(text: str) -> str:
