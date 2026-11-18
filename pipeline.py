@@ -1210,6 +1210,21 @@ def backend_name(b: Optional[str]) -> str:
             "gemini_inc": "IA incluida · Gemini", "proxy": "IA incluida de NovoClip"}.get(b or "", "ninguna")
 
 
+_AI_NOTIFY: Callable[[float, str], None] = _noop     # lo fija select_clips: así los avisos de la IA llegan a la pantalla de progreso
+_AI_NOTIFY_PCT = 42.0
+
+
+def _ai_note(msg: str) -> None:
+    print(f"  [IA] {msg}")
+    try:
+        _AI_NOTIFY(_AI_NOTIFY_PCT, msg)
+    except Exception:   # noqa: BLE001
+        pass
+
+
+GEMINI_TIMEOUT_S = 100   # sin límite, una llamada colgada dejaba el progreso parado para siempre
+
+
 def _ask_gemini(prompt: str, schema, images: Optional[list] = None, key: Optional[str] = None,
                 model: Optional[str] = None):
     """Respuesta estructurada de Gemini (SDK google-genai) con la forma de `schema`."""
@@ -1218,7 +1233,7 @@ def _ask_gemini(prompt: str, schema, images: Optional[list] = None, key: Optiona
         from google.genai import types
     except ImportError:
         raise RuntimeError("Falta la librería de Gemini: ejecuta  .venv\\Scripts\\pip install google-genai")
-    client = genai.Client(api_key=key or gemini_key())
+    client = genai.Client(api_key=key or gemini_key(), http_options=types.HttpOptions(timeout=GEMINI_TIMEOUT_S * 1000))
     contents: list = [prompt]
     for label, data in images or []:
         contents += [label, types.Part.from_bytes(data=data, mime_type="image/jpeg")]
@@ -1227,20 +1242,29 @@ def _ask_gemini(prompt: str, schema, images: Optional[list] = None, key: Optiona
     for m in (model or gemini_model(), GEMINI_DEFAULT_MODEL, "gemini-2.5-flash"):
         if m not in models:
             models.append(m)
+    quota_hit = False
     for m in models:
         check_cancel()
+        _ai_note(f"Gemini: consultando {m} (máx. {GEMINI_TIMEOUT_S} s)...")
         try:
             resp = client.models.generate_content(model=m, contents=contents, config=cfg)
         except Exception as e:
             last = e
             msg = str(e).lower()
+            short = str(e).replace("\n", " ")[:110]
             if "not found" in msg or "404" in msg or "not supported" in msg:
+                _ai_note(f"Gemini: el modelo {m} no existe para tu clave; pruebo otro...")
                 continue          # ese nombre de modelo no existe en esta cuenta: probar el siguiente
             if "api key" in msg or "api_key" in msg or "401" in msg or "403" in msg or "permission" in msg:
                 raise RuntimeError("La clave de Gemini no es válida. Crea una en https://aistudio.google.com/apikey "
                                    "y pégala en la app.") from e
             if "429" in msg or "quota" in msg or "resource_exhausted" in msg:
-                raise RuntimeError("Gemini: se agotó la cuota gratuita por ahora. Espera un rato o usa Claude.") from e
+                quota_hit = True
+                _ai_note(f"Gemini: {m} sin cupo ahora ({short}); pruebo otro modelo...")
+                continue
+            if any(x in msg for x in ("timeout", "timed out", "deadline", "503", "500", "overloaded", "unavailable", "connection")):
+                _ai_note(f"Gemini: {m} tardó demasiado o está saturado; pruebo otro modelo...")
+                continue
             raise
         parsed = getattr(resp, "parsed", None)
         if isinstance(parsed, schema):
@@ -1249,7 +1273,10 @@ def _ask_gemini(prompt: str, schema, images: Optional[list] = None, key: Optiona
         if not text:
             raise RuntimeError("Gemini no devolvió respuesta (posible filtro de contenido).")
         return schema.model_validate_json(_extract_json(text))
-    raise RuntimeError(f"Gemini: ningún modelo disponible ({', '.join(models)}): {str(last)[:200]}")
+    if quota_hit:
+        raise RuntimeError("Gemini: se agotó la cuota gratuita por ahora en todos los modelos probados. Espera un rato, "
+                           "elige otro modelo en Ajustes o usa Claude.")
+    raise RuntimeError(f"Gemini: ningún modelo respondió ({', '.join(models)}): {str(last)[:200]}")
 
 
 def _extract_json(text: str) -> str:
@@ -1680,6 +1707,8 @@ def snap_to_silence(src: Path, clips: list) -> list:
 
 
 def select_clips(src: Path, tr: dict, opts: Options, title: str, progress: ProgressFn = _noop) -> list[Clip]:
+    global _AI_NOTIFY
+    _AI_NOTIFY = progress
     backend = ai_backend() if opts.use_ai else None
     clips: list[Clip] = []
     if backend:
