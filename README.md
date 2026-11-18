@@ -252,3 +252,7 @@ Con Gemini, la **revisión con IA** ya no mira solo 9 fotogramas: recibe el **vi
 
 ## 🛠️ "Optimizar con IA" arregla las recomendaciones de la revisión
 Si un clip tiene problemas o recomendaciones de la revisión con IA (encuadre, final abierto, gancho débil...), **Optimizar con IA** los recibe y los arregla: mueve el inicio y el final, reescribe título, gancho y hashtags, y si el problema es de **encuadre** cambia el encuadre. Después **vuelve a revisar** el clip: las recomendaciones se actualizan (si se arregló, desaparecen). Lo que no se pueda arreglar solo (por ejemplo, subtítulos que tapan algo) aparece como "Lo que la IA no pudo arreglar sola". **Deshacer** lo deja como estaba, encuadre incluido.
+
+## Desarrollo con Claude Code: skill de ahorro de tokens
+
+El repo incluye la skill [token-optimization](https://github.com/robertzas/token-optimization-skill) (MIT/Apache-2.0) en `.claude/skills/token-optimization`, un guard que bloquea lecturas completas de archivos enormes (`.claude/hooks/guard_read.py`), `AGENTS.md`/`CLAUDE.md` cortos, `docs/STATUS.md` como traspaso entre sesiones y `docs/MAP.md` (mapa del código; regenéralo con `python3 scripts/gen_map.py --out docs/MAP.md`). Solo afecta a quien edita el proyecto con Claude Code, no a la app.

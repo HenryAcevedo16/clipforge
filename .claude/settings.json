@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./frontend/node_modules/**)",
+      "Read(./frontend/.next/**)",
+      "Read(./frontend/package-lock.json)",
+      "Read(./web/_next/**)",
+      "Read(./models/**)",
+      "Read(./jobs/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          { "type": "command", "command": "python3 .claude/hooks/guard_read.py --max-lines 600" }
+        ]
+      }
+    ]
+  }
+}

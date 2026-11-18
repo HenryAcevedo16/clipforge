@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./Cargo.lock)",
+      "Read(./package-lock.json)",
+      "Read(./pnpm-lock.yaml)",
+      "Read(./yarn.lock)",
+      "Read(./target/**)",
+      "Read(./dist/**)",
+      "Read(./node_modules/**)",
+      "Read(./vendor/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/guard_read.py --max-lines 600"
+          }
+        ]
+      }
+    ]
+  }
+}
