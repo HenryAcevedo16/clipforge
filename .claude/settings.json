@@ -14,7 +14,42 @@
       {
         "matcher": "Read",
         "hooks": [
-          { "type": "command", "command": "python3 .claude/hooks/guard_read.py --max-lines 600" }
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/guard_read.py --max-lines 600"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard search",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard read",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard compact",
+            "timeout": 10
+          }
         ]
       }
     ]

@@ -1,0 +1,11 @@
+web/
+dist_skills/
+.claude/skills/
+frontend/.next/
+frontend/out/
+frontend/node_modules/
+models/
+jobs/
+fonts/
+music/
+static/

@@ -44,3 +44,7 @@ web_backup/
 frontend/node_modules/
 frontend/.next/
 frontend/out/
+
+# graphify
+graphify-out/cache/
+graphify-out/.graphify_*
