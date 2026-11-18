@@ -182,6 +182,7 @@ class Options:
     fps: Optional[float] = None     # None = el del original (máx 60)
     loudnorm: bool = True
     review: bool = True             # Claude revisa cada clip terminado (necesita API key)
+    video_ai: bool = True           # con Gemini: la IA VE el video del clip (imagen + audio) al revisarlo, no solo fotogramas sueltos
     cookies_from_browser: Optional[str] = None  # "chrome", "firefox"... por si YouTube lo pide
     # --- edición para retener al espectador ---
     jumpcuts: bool = True           # quitar silencios y pausas largas
@@ -1240,7 +1241,7 @@ GEMINI_TIMEOUT_S = 100   # sin límite, una llamada colgada dejaba el progreso p
 
 
 def _ask_gemini(prompt: str, schema, images: Optional[list] = None, key: Optional[str] = None,
-                model: Optional[str] = None):
+                model: Optional[str] = None, videos: Optional[list] = None):
     """Respuesta estructurada de Gemini (SDK google-genai) con la forma de `schema`."""
     try:
         from google import genai
@@ -1251,6 +1252,8 @@ def _ask_gemini(prompt: str, schema, images: Optional[list] = None, key: Optiona
     contents: list = [prompt]
     for label, data in images or []:
         contents += [label, types.Part.from_bytes(data=data, mime_type="image/jpeg")]
+    for label, data in videos or []:       # video con audio (Gemini lo analiza fotograma a fotograma y escucha la pista)
+        contents += [label, types.Part.from_bytes(data=data, mime_type="video/mp4")]
     cfg = types.GenerateContentConfig(response_mime_type="application/json", response_schema=schema)
     models, last = [], None
     for m in (model or gemini_model(), GEMINI_DEFAULT_MODEL):
@@ -1329,7 +1332,7 @@ def _extract_json(text: str) -> str:
     return text[a : b + 1]
 
 
-def ask_claude(prompt: str, schema, opts: Options, images: Optional[list] = None):
+def ask_claude(prompt: str, schema, opts: Options, images: Optional[list] = None, videos: Optional[list] = None):
     """Pide a Claude una respuesta con la forma de `schema` (modelo pydantic).
 
     images: lista de (etiqueta, bytes_jpeg). Con la API van en el mensaje; con Claude Code
@@ -1337,11 +1340,11 @@ def ask_claude(prompt: str, schema, opts: Options, images: Optional[list] = None
     """
     backend = ai_backend()
     if backend == "gemini":
-        return _ask_gemini(prompt, schema, images)
+        return _ask_gemini(prompt, schema, images, videos=videos)
     if backend == "gemini_inc":
         inc = _included_cfg()
         return _ask_gemini(prompt, schema, images, key=os.environ.get("NOVOCLIP_INCLUDED_GEMINI_KEY") or inc.get("gemini_key"),
-                           model=inc.get("gemini_model"))
+                           model=inc.get("gemini_model"), videos=videos)
     if backend == "proxy":
         return _ask_proxy(prompt, schema, images)
     if backend == "api":
@@ -3017,6 +3020,20 @@ def _frames_b64(video: Path, duration: float, n: int = REVIEW_FRAMES) -> list[tu
     return out
 
 
+def _clip_video_bytes(video: Path, max_mb: float = 17.0) -> Optional[bytes]:
+    """Copia liviana del clip (480p, 15 fps, audio mono) para mandársela a la IA: que ocupe menos de ~17 MB."""
+    import tempfile
+    for h, crf, ab in ((480, 30, "56k"), (360, 34, "40k"), (270, 38, "32k")):
+        with tempfile.TemporaryDirectory(prefix="novoclip_v_") as tmp:
+            out = Path(tmp) / "c.mp4"
+            r = _sp_run(["ffmpeg", "-y", "-v", "error", "-i", str(video), "-vf", f"scale=-2:{h}", "-r", "15", "-c:v", "libx264",
+                         "-preset", "veryfast", "-crf", str(crf), "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", ab, "-ac", "1",
+                         "-movflags", "+faststart", str(out)], capture_output=True)
+            if r.returncode == 0 and out.exists() and out.stat().st_size <= max_mb * 1e6:
+                return out.read_bytes()
+    return None
+
+
 def review_clip(clip: Clip, video: Path, tr: dict, opts: Options) -> dict:
     """Claude mira fotogramas + transcripción del clip y dice si está listo para publicar."""
     import base64
@@ -3041,6 +3058,17 @@ def review_clip(clip: Clip, video: Path, tr: dict, opts: Options) -> dict:
     after = [s for s in segs if s["s"] >= clip.end - 0.2][:1]
     texto = " ".join(s["text"] for s in inside)
 
+    vid = None
+    if opts.video_ai and ai_backend() in ("gemini", "gemini_inc"):
+        try:
+            vid = _clip_video_bytes(video)
+        except Cancelled:
+            raise
+        except Exception:   # noqa: BLE001
+            vid = None
+    video_note = ("Abajo tienes el VIDEO del clip ya editado, con su audio. Míralo y escúchalo entero (no solo fotogramas sueltos). "
+                  "Además de lo siguiente, fíjate en el AUDIO: si la voz se corta al final, hay saltos bruscos o se oye mal.\n"
+                  if vid else f"Abajo tienes {REVIEW_FRAMES} fotogramas del clip ya editado. ")
     prompt = f"""Eres el editor jefe de un canal de TikTok/Shorts/Reels. Revisa este clip antes de publicarlo.
 
 Título: {clip.title}
@@ -3053,7 +3081,7 @@ Lo que se dice en el clip:
 Frase justo ANTES del clip en el video original: "{before[0]['text'] if before else '(es el inicio del video)'}"
 Frase justo DESPUÉS del clip: "{after[0]['text'] if after else '(es el final del video)'}"
 
-Abajo tienes {REVIEW_FRAMES} fotogramas del clip ya editado. Revisa:
+{video_note}Revisa:
 1. Encuadre: ¿la persona/sujeto principal está bien centrado o aparece cortado/fuera de cuadro? ¿hay barras negras o fotogramas vacíos?
 2. Subtítulos: ¿se leen bien, tapan la cara u otro texto del video, están bien escritos?
 3. Gancho: ¿los primeros segundos enganchan? ¿el titular de arriba se lee y tiene sentido?
@@ -3061,6 +3089,13 @@ Abajo tienes {REVIEW_FRAMES} fotogramas del clip ya editado. Revisa:
 5. Contenido: ¿se entiende solo, sin contexto previo? ¿tiene potencial para retener al espectador?
 
 Sé exigente pero justo: aprueba solo si se puede publicar tal cual. Responde en español."""
+    if vid:
+        try:
+            return ask_claude(prompt, Revision, opts, None, [("Video del clip ya editado", vid)]).model_dump()
+        except Cancelled:
+            raise
+        except Exception:   # noqa: BLE001
+            prompt = prompt.replace(video_note, f"Abajo tienes {REVIEW_FRAMES} fotogramas del clip ya editado. ")   # el modelo no acepta video: fotogramas
     images = [(f"Fotograma a los {t:.1f} s", base64.b64decode(b64)) for t, b64 in _frames_b64(video, clip.out_duration or clip.duration)]
     return ask_claude(prompt, Revision, opts, images).model_dump()
 

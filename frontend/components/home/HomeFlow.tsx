@@ -49,6 +49,7 @@ interface Settings {
   useAi: boolean; // elegir momentos con IA
   refine: boolean; // afinar inicio/fin con IA
   completeIdeas: boolean; // que el clip termine cuando la idea queda cerrada
+  videoAi: boolean; // la IA ve el video del clip (Gemini)
   snapSilence: boolean; // cortar en silencio natural
   live: boolean;
   liveEvery: number; // minutos entre análisis de la IA en un directo
@@ -60,7 +61,7 @@ interface Settings {
 
 const DEFAULTS: Settings = {
   numClips: 5, minLen: 20, maxLen: 60, aspect: "9:16", captionStyle: "viral", review: true, templateId: null,
-  layout: "auto", jumpcuts: true, zoom: true, progressBar: true, colorPop: true, music: true, captions: true, showHook: true, highlightKw: true, loudnorm: true, useAi: true, refine: true, completeIdeas: true, snapSilence: true, live: false, liveEvery: 3, smartDownload: true, quality: "max", aiProvider: "auto", logoOn: true,
+  layout: "auto", jumpcuts: true, zoom: true, progressBar: true, colorPop: true, music: true, captions: true, showHook: true, highlightKw: true, loudnorm: true, useAi: true, refine: true, completeIdeas: true, videoAi: true, snapSilence: true, live: false, liveEvery: 3, smartDownload: true, quality: "max", aiProvider: "auto", logoOn: true,
 };
 
 const AI_NAMES: Record<AiSource, string> = { auto: "Automática", cli: "Mi suscripción de Claude", claude_api: "API de Claude", gemini: "Gemini", incluida: "IA incluida" };
@@ -213,6 +214,7 @@ export function HomeFlow() {
         loudnorm: s.loudnorm,
         refine: s.refine,
         complete_ideas: s.completeIdeas,
+        video_ai: s.videoAi,
         snap_silence: s.snapSilence,
         review: s.review && !!config.data?.ai,
         layout: s.layout,
@@ -591,6 +593,7 @@ export function HomeFlow() {
                 label="Revisar clips con IA"
                 hint={config.data && !config.data.ai ? "La IA no está activada en este servidor, así que los clips saldrán sin nota." : "Cada clip recibe una nota de 0 a 100, con problemas y sugerencias."}
               />
+              <Switch checked={s.videoAi && s.review && !!config.data?.ai} disabled={!s.review || !config.data?.ai} onChange={(v) => setS({ ...s, videoAi: v })} label="Que la IA vea el video del clip (con audio)" hint="Con Gemini, la revisión mira y escucha el clip entero y no solo unos fotogramas: detecta mejor cortes bruscos, voz que se corta y encuadres raros. Gasta algo más de cupo. Mejor con un modelo Gemini 4." />
             </Card>
 
             {formError && (

@@ -236,3 +236,6 @@ La webcam de un stream es pequeña y estirarla a 1080 px la dejaba borrosa. Ahor
 
 ## 🔎 Qué modelo de Gemini puede usar mi clave
 En **Ajustes → Inteligencia artificial → Gemini**, pulsa **"Ver los modelos que puede usar mi clave"**: la app le pregunta a Google y lista los modelos de texto disponibles (Flash primero). Toca uno para usarlo.
+
+## 🎥 La IA ve el video del clip
+Con Gemini, la **revisión con IA** ya no mira solo 9 fotogramas: recibe el **video del clip entero con su audio** (una copia liviana de ~480p). Así detecta mejor cortes bruscos, voz que se corta al final, subtítulos que tapan la cara o un encuadre raro. Se activa en el paso 2 → "Que la IA vea el video del clip". Funciona mejor con los modelos Gemini 4 (`gemini-4-hydrogen`, `gemini-4-argon`); si el modelo no acepta video, la app usa fotogramas. Con Claude o la IA incluida se siguen usando fotogramas.

@@ -158,6 +158,7 @@ export interface CreateJobInput {
   loudnorm?: boolean; // igualar el volumen
   refine?: boolean; // afinar inicio y final con IA
   complete_ideas?: boolean; // que cada clip termine cuando la idea queda cerrada
+  video_ai?: boolean; // la IA ve el video del clip (imagen + audio) al revisarlo (solo Gemini)
   snap_silence?: boolean; // cortar en silencios naturales
   live?: boolean; // el enlace es un directo: clips en tiempo real
   live_window?: number;
