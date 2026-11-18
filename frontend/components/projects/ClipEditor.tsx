@@ -105,7 +105,7 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
 
   useEffect(() => {
     api.getClipEdit(jobId, index).then(
-      (d) => (d.editable ? fill(d) : setError("Este clip es de una versión anterior o de un directo y no se puede editar. Genera los clips de nuevo.")),
+      (d) => (d.editable ? fill(d) : setError("Este clip no se puede editar: es de una versión anterior o de un directo que no guardó su video. Genera los clips de nuevo.")),
       (e) => setError(e instanceof Error ? e.message : "No pudimos abrir el clip."),
     );
   }, [jobId, index]);

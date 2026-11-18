@@ -163,7 +163,7 @@ export function ProjectDetail({ id }: { id: string }) {
           </div>
           <div className="flex flex-col gap-5">
             {clips.map((c) => (
-              <ClipCard key={c.file} jobId={job.id} c={c} onEdit={!job.result?.live ? () => setEditing(c.index) : undefined} onChanged={() => res.reload(true)} />
+              <ClipCard key={c.file} jobId={job.id} c={c} onEdit={() => setEditing(c.index)} onChanged={() => res.reload(true)} />
             ))}
           </div>
         </section>

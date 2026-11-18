@@ -56,6 +56,12 @@ async def _no_cache_pages(request: Request, call_next):
     return resp
 JOBS: dict[str, dict] = {}
 LOCK = threading.Semaphore(int(os.environ.get("NOVOCLIP_WORKERS", "1")))
+EDIT_LOCK = threading.Semaphore(1)
+
+
+def _edit_gate():
+    """Mientras hay un directo en marcha (ocupa LOCK todo el rato), editar un clip no debe esperar a que termine."""
+    return EDIT_LOCK if any(j.get("status") == "live" for j in list(JOBS.values())) else LOCK
 
 
 def _worker(job_id: str, source: str, opts: Options) -> None:
@@ -516,7 +522,7 @@ async def clip_rerender(job_id: str, index: int, request: Request):
         def progress(p: float, msg: str) -> None:
             job["progress"], job["message"] = round(p, 1), msg
 
-        with LOCK:
+        with _edit_gate():
             if job.get("cancel_requested"):
                 job.update(status="cancelled", message="Cancelado.")
                 return
@@ -550,7 +556,7 @@ def _clip_task(job_id: str, index: int, kind: str, fn):
         def progress(p: float, msg: str) -> None:
             job["progress"], job["message"] = round(p, 1), msg
 
-        with LOCK:
+        with _edit_gate():
             if job.get("cancel_requested"):
                 job.update(status="cancelled", message="Cancelado.")
                 return

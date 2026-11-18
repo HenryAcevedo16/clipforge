@@ -70,11 +70,12 @@ def begin_job() -> int:
 
 def end_job() -> None:
     global _AI_PROVIDER
-    _AI_PROVIDER = "auto"          # la IA elegida para un trabajo no se queda pegada para la pantalla de Ajustes
     ident = threading.get_ident()
     with _REG_LOCK:
         _CANCEL.pop(ident, None)
         _ACTIVE.pop(ident, None)
+        if not _CANCEL:             # la IA elegida para un trabajo no se queda pegada (salvo que haya otro trabajo en marcha)
+            _AI_PROVIDER = "auto"
 
 
 def check_cancel() -> None:
@@ -3585,7 +3586,7 @@ def load_clip_for_edit(workdir: Path, index: int) -> dict:
                 break
     job = _job_info(workdir)
     o = job.get("opts", {})
-    return {"clip": c, "words": words, "editable": bool(job) and not res.get("live"),
+    return {"clip": c, "words": words, "editable": bool(job) and (not res.get("live") or _live_src(workdir, index) is not None),
             "layout": c.get("edit_layout") or o.get("layout", "auto"),
             "caption_style": c.get("edit_style") or o.get("caption_style", "viral"),
             "styles": list(STYLES) + ["none"],
@@ -3662,9 +3663,17 @@ def rerender_clip(workdir: Path, index: int, edits: dict, progress: ProgressFn =
     tr_abs = {"language": res.get("language"), "segments": _group_words(words)}
 
     # video: el completo si está en el disco; si no, solo el trozo necesario
-    src = _local_video(workdir, job)
+    live = _live_src(workdir, index) if res.get("live") else None
+    if res.get("live") and not live:
+        raise RuntimeError("Este clip de directo no guardó su trozo de video, así que no se puede volver a editar.")
+    src = live[0] if live else _local_video(workdir, job)
     part, off = None, 0.0
-    if src is None:
+    if live:
+        off = live[1]
+        c.start, c.end = max(c.start, off), min(c.end, off + live[2])   # solo hay video dentro del trozo guardado
+        if c.end - c.start < 1.0:
+            raise RuntimeError("Ese rango queda fuera del video guardado de este clip.")
+    elif src is None:
         url = job.get("source") or ""
         if not re.match(r"^https?://", url):
             raise RuntimeError("No se encuentra el video original de este trabajo.")
@@ -4151,6 +4160,45 @@ def _live_source(url: str, opts: Options):
     return args, info.get("title") or "directo", (m.group(1) if m else None), maps
 
 
+LIVE_SRC_MARGIN = 15.0   # segundos de video guardados antes y después de cada clip de un directo (para poder editarlo)
+
+
+def _live_keep_source(workdir: Path, chunk: Path, c: Clip, t0_abs: float, chunk_dur: float) -> None:
+    """Guarda un trozo del video alrededor del clip y pasa sus palabras al tiempo del directo,
+    así el clip se puede editar / optimizar con IA después aunque el directo ya no esté grabándose."""
+    try:
+        a = max(0.0, c.start - LIVE_SRC_MARGIN)
+        b = min(float(chunk_dur), c.end + LIVE_SRC_MARGIN)
+        d = workdir / "live_src"
+        d.mkdir(exist_ok=True)
+        out = d / f"{c.index:02d}.mp4"
+        run(["ffmpeg", "-y", "-v", "error", "-ss", f"{a:.3f}", "-to", f"{b:.3f}", "-i", str(chunk),
+             "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-c:a", "aac", "-b:a", "160k",
+             "-movflags", "+faststart", str(out)])
+        (d / f"{c.index:02d}.json").write_text(json.dumps({"off": round(t0_abs + a, 3), "dur": round(b - a, 3)}))
+        wf = workdir / "edit" / f"{c.index:02d}.json"
+        if wf.exists():
+            words = json.loads(wf.read_text(encoding="utf-8"))
+            for w in words:
+                w["s"] = round(w["s"] + t0_abs, 3)
+                w["e"] = round(w["e"] + t0_abs, 3)
+            wf.write_text(json.dumps(words, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass   # sin el trozo el clip se ve igual; solo no se podrá volver a editar
+
+
+def _live_src(workdir: Path, index: int) -> Optional[tuple]:
+    """(video, desfase) del trozo guardado de un clip de directo, o None."""
+    f, j = workdir / "live_src" / f"{int(index):02d}.mp4", workdir / "live_src" / f"{int(index):02d}.json"
+    if f.exists() and j.exists():
+        try:
+            m = json.loads(j.read_text())
+            return f, float(m["off"]), float(m["dur"])
+        except Exception:
+            return None
+    return None
+
+
 def process_live(source: str, workdir: Path, opts: Options, progress: ProgressFn = _noop,
                  on_update: Optional[Callable[[dict], None]] = None) -> dict:
     """Graba un directo en trozos y, cada `live_window` segundos, analiza lo nuevo y saca los clips buenos.
@@ -4183,6 +4231,15 @@ def process_live(source: str, workdir: Path, opts: Options, progress: ProgressFn
     result = {"title": title, "live": True, "clips": [], "source": {}, "scene": {}}
 
     def save() -> None:
+        try:   # conservar lo que el usuario cambió desde fuera (editar, gancho, Optimizar con IA) mientras seguía el directo
+            disk = json.loads((workdir / "result.json").read_text(encoding="utf-8"))
+            by_idx = {int(x["index"]): x for x in disk.get("clips", [])}
+            for k, x in enumerate(result["clips"]):
+                d = by_idx.get(int(x["index"]))
+                if d and (d.get("edited") or d.get("meta_edited") or d.get("optimized") or d.get("rev")):
+                    result["clips"][k] = d
+        except Exception:
+            pass
         (workdir / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
         if on_update:
             on_update(result)
@@ -4270,6 +4327,7 @@ def process_live(source: str, workdir: Path, opts: Options, progress: ProgressFn
                     counter += 1
                     c.index = counter
                     c = render_clip(chunk, c, tr, opts, outdir, meta, sub, 45, 95, scene=scene)
+                    _live_keep_source(workdir, chunk, c, t0_abs, meta["duration"])
                     if opts.review and ai_backend():
                         sub(96, f"Clip {c.index}: la IA está revisando el resultado...")
                         try:

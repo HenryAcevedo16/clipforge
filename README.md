@@ -270,3 +270,7 @@ Haz doble clic en `actualizar_windows.bat`: baja la última versión de GitHub (
 ### Directo sin clips
 
 En modo directo la nota mínima por defecto es 60 (antes 70) y baja 8 puntos por cada tramo seguido sin clip (hasta 40). La línea de estado ahora muestra el último análisis, por ejemplo «mejor candidato 52/100 (mínimo 60)», para saber por qué no sale nada.
+
+### Clips de directo editables
+
+Cada clip de un directo guarda su propio trozo de video (15 s de margen a cada lado, carpeta `live_src/`), así que también puedes cambiarle el gancho, el título, recortarlo y usar **Optimizar con IA** aunque el directo siga en marcha. Los cambios no se pierden cuando llegan clips nuevos. Los clips de directos hechos antes de esta versión no tienen ese trozo y no se pueden editar.

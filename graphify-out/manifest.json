@@ -12,9 +12,9 @@
     "semantic_hash": ""
   },
   "app.py": {
-    "mtime": 1795043005.9264748,
-    "seen": 1795043017.4006715,
-    "ast_hash": "16e88d794704480e6f910807badfe27d",
+    "mtime": 1795046062.4208326,
+    "seen": 1795046170.4837708,
+    "ast_hash": "b8070062436ebbfb2a779903672a4ef0",
     "semantic_hash": ""
   },
   "frontend/app/ajustes/page.tsx": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "frontend/components/home/HomeFlow.tsx": {
-    "mtime": 1795032494.4075813,
-    "seen": 1795041072.4217296,
-    "ast_hash": "0f9dd33af148ecbacacaac9326eb9411",
+    "mtime": 1795046076.1352386,
+    "seen": 1795046170.4837954,
+    "ast_hash": "78ecb66f159f77a2ce413c724b86336f",
     "semantic_hash": ""
   },
   "frontend/components/home/RecentProjects.tsx": {
@@ -132,15 +132,15 @@
     "semantic_hash": ""
   },
   "frontend/components/projects/ClipEditor.tsx": {
-    "mtime": 1795032134.0513396,
-    "seen": 1795041072.4217346,
-    "ast_hash": "d584a5eddec3824660ff86f09307e066",
+    "mtime": 1795046073.0587368,
+    "seen": 1795046170.4838023,
+    "ast_hash": "71581470f4ab89a49c51f9ddf9584b8c",
     "semantic_hash": ""
   },
   "frontend/components/projects/ProjectDetail.tsx": {
-    "mtime": 1795032494.4069633,
-    "seen": 1795041072.4217358,
-    "ast_hash": "3b2f9098f5323780d54f274599aca789",
+    "mtime": 1795046073.058534,
+    "seen": 1795046170.4838037,
+    "ast_hash": "6a34849bc22dcc08c368ec6e9602788d",
     "semantic_hash": ""
   },
   "frontend/components/projects/ProjectsList.tsx": {
@@ -402,9 +402,9 @@
     "semantic_hash": ""
   },
   "pipeline.py": {
-    "mtime": 1795045674.2568653,
-    "seen": 1795045681.294808,
-    "ast_hash": "74059992ba89ff1ceed9c80a826f509c",
+    "mtime": 1795046062.4230857,
+    "seen": 1795046170.4838567,
+    "ast_hash": "382c6aaa8f66c99ac394219cf34c56c0",
     "semantic_hash": ""
   },
   "scripts/gen_map.py": {
@@ -462,9 +462,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795045678.864354,
-    "seen": 1795045681.2948196,
-    "ast_hash": "b4f096564aed139ba09b8311a7bc5919",
+    "mtime": 1795046168.191571,
+    "seen": 1795046170.4838681,
+    "ast_hash": "778970ffe33dc8b4b6d526be1fd3e6c8",
     "semantic_hash": ""
   },
   "docs/MAP.md": {

@@ -723,11 +723,11 @@ export function HomeFlow() {
             <div className="mt-6">
               <h3 className="mb-1 text-lg font-extrabold">Clips que ya están listos</h3>
               <p className="mb-3 text-sm text-ink-2">
-                Puedes editarlos mientras se generan los demás{job.result.live ? "" : " (los cambios se aplican cuando termine el trabajo actual)"}.
+                Puedes editarlos, cambiarles el gancho u optimizarlos con IA mientras se generan los demás{job.result.live ? "" : " (los cambios se aplican cuando termine el trabajo actual)"}.
               </p>
               <div className="flex flex-col gap-5">
                 {job.result.clips.map((c) => (
-                  <ClipCard key={c.file} jobId={job.id} c={c} onEdit={job.result?.live ? undefined : () => setEditing(c.index)} onChanged={refreshJob} />
+                  <ClipCard key={c.file} jobId={job.id} c={c} onEdit={() => setEditing(c.index)} onChanged={refreshJob} />
                 ))}
               </div>
             </div>
@@ -750,7 +750,7 @@ export function HomeFlow() {
         </section>
       )}
 
-      {step === 4 && job?.result && <ResultStep job={job} saving={saving} onSend={() => sendToProjects("project")} onAgain={reset} onEdit={job.result.live ? undefined : setEditing} onChanged={refreshJob} />}
+      {step === 4 && job?.result && <ResultStep job={job} saving={saving} onSend={() => sendToProjects("project")} onAgain={reset} onEdit={setEditing} onChanged={refreshJob} />}
 
       {previewing && (
         <FramingPreview
