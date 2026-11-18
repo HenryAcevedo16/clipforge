@@ -230,3 +230,6 @@ En **Mis proyectos → tu proyecto**, cada clip tiene:
 - **Título y hashtags:** edición rápida, se guarda al instante (no vuelve a generar el video).
 - **Editar corte:** recortar con deslizadores, corregir palabras, resaltar, cambiar titular, encuadre y efectos, y "Volver a generar".
 También se ven y se editan los clips que sí se generaron aunque el trabajo haya terminado con error.
+
+## 📷 Calidad de la webcam del streamer
+La webcam de un stream es pequeña y estirarla a 1080 px la dejaba borrosa. Ahora el panel de la webcam se limpia (reduce los bloques de compresión), se amplía con Lanczos y se afina. Si la webcam es tan pequeña que habría que ampliarla más de 3,2 veces, se muestra nítida y centrada sobre su propio fondo difuminado, en vez de estirarla de borde a borde. Para más nitidez, descarga el video con "La mejor" resolución (paso 2 → Origen del video).

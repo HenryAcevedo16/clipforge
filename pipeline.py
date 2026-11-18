@@ -1861,6 +1861,34 @@ def _hist(frame):
 
 SPLIT_TOP = 0.38   # fracción de la altura para la webcam en el modo stream
 
+CAM_MAX_UP = 3.2   # cuánto se puede ampliar la webcam sin que se vea borrosa (más que eso: tarjeta nítida sobre fondo difuminado)
+
+
+def _unsharp(img: np.ndarray, amount: float = 0.6, sigma: float = 1.0) -> np.ndarray:
+    blur = cv2.GaussianBlur(img, (0, 0), sigma)
+    return cv2.addWeighted(img, 1.0 + amount, blur, -amount, 0)
+
+
+def _cam_panel(crop: np.ndarray, W: int, H: int, max_up: float = CAM_MAX_UP) -> np.ndarray:
+    """Panel de la webcam del streamer (W x H) con la mejor nitidez posible.
+    La webcam de un stream es pequeña (a veces 300 px de ancho): estirarla a 1080 px la deja borrosa. Por eso se
+    limpia la compresión antes de ampliar, se amplía con Lanczos y se afina; y si hay que ampliar más de `max_up`
+    veces, se muestra en una "tarjeta" nítida sobre su propio fondo difuminado en vez de estirarla de borde a borde."""
+    h, w = crop.shape[:2]
+    clean = cv2.bilateralFilter(crop, 5, 18, 5) if max(W / w, H / h) > 1.3 else crop
+    up_fill = max(W / w, H / h)
+    if up_fill <= max_up:
+        return _unsharp(cv2.resize(clean, (W, H), interpolation=cv2.INTER_LANCZOS4), 0.55, 1.0)
+    fw, fh = min(W, int(w * max_up) // 2 * 2), min(H, int(h * max_up) // 2 * 2)
+    small = cv2.resize(crop, (max(8, W // 10), max(8, H // 10)), interpolation=cv2.INTER_AREA)
+    bg = cv2.resize(cv2.GaussianBlur(small, (0, 0), 2.0), (W, H), interpolation=cv2.INTER_CUBIC)
+    bg = (bg.astype(np.float32) * 0.6).astype(np.uint8)
+    fg = _unsharp(cv2.resize(clean, (fw, fh), interpolation=cv2.INTER_LANCZOS4), 0.7, 1.0)
+    x0, y0 = (W - fw) // 2, (H - fh) // 2
+    bg[y0:y0 + fh, x0:x0 + fw] = fg
+    return bg
+
+
 
 def _facecam_box(faces: list, src_w: int, src_h: int) -> tuple[float, float, float]:
     """Cara media de la webcam del streamer: (centro_x, centro_y, alto) en píxeles del original."""
@@ -2786,7 +2814,7 @@ def _render_clip_once(src: Path, clip: Clip, tr: dict, opts: Options, outdir: Pa
                 outf = canvas
             elif layout == "gaming" and cam_on[min(k, len(cam_on) - 1)]:
                 x0, y0, x1, y1 = cam_rect
-                top = cv2.resize(fr[y0:y1, x0:x1], (out_w, top_h), interpolation=cv2.INTER_LANCZOS4)
+                top = _cam_panel(fr[y0:y1, x0:x1], out_w, top_h)
                 x0, y0, x1, y1 = game_rect
                 gx0 = x0
                 if char_x is not None:
