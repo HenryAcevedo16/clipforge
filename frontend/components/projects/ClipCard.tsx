@@ -1,9 +1,10 @@
 "use client";
 import { Card } from "@heroui/react";
-import { CalendarClock, Check, ChevronDown, Copy, Download, Pencil, Scissors, Send, TriangleAlert } from "lucide-react";
+import { CalendarClock, Check, ChevronDown, Copy, Download, Pencil, Scissors, Send, Sparkles, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { api, type ClipResult, type ClipReview } from "@/lib/api";
+import { waitJob } from "@/lib/api/wait";
 import { formatDuration } from "@/lib/time";
 import { Badge } from "../ui/Badge";
 import { Button, buttonClass } from "../ui/Button";
@@ -118,6 +119,25 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
   const [applying, setApplying] = useState(false);
   const [pct, setPct] = useState(0);
   const [msg, setMsg] = useState("");
+  const [optBusy, setOptBusy] = useState<null | "opt" | "rev">(null);
+  const runOpt = async (kind: "opt" | "rev") => {
+    setOptBusy(kind);
+    setPct(0);
+    setMsg(kind === "opt" ? "La IA está optimizando el clip…" : "Deshaciendo…");
+    try {
+      const { id } = kind === "opt" ? await api.optimizeClip(jobId, c.index) : await api.revertClip(jobId, c.index);
+      await waitJob(id, (p, m) => {
+        setPct(p);
+        setMsg(m);
+      });
+      toast(kind === "opt" ? "Clip optimizado con IA." : "Optimización deshecha.");
+      onChanged?.();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "No se pudo completar.", "bad");
+    } finally {
+      setOptBusy(null);
+    }
+  };
   const applyHook = async () => {
     setApplying(true);
     setPct(0);
@@ -125,14 +145,10 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
     try {
       const text = hook.trim();
       const { id } = await api.renderClip(jobId, c.index, { hook: text, show_hook: text !== "" });
-      for (;;) {
-        await new Promise((r) => setTimeout(r, 1000));
-        const j = await api.getJob(id);
-        setPct(j.progress);
-        setMsg(j.message);
-        if (j.status === "error") throw new Error(j.message || "No se pudo aplicar el gancho.");
-        if (j.status === "done") break;
-      }
+      await waitJob(id, (p, m) => {
+        setPct(p);
+        setMsg(m);
+      });
       toast("Gancho actualizado en el video.");
       setHookEdit(false);
       onChanged?.();
@@ -243,11 +259,38 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
             {c.hashtags.length > 8 && <li className="px-1 py-0.5 text-[13px] text-ink-3">+{c.hashtags.length - 8}</li>}
           </ul>
         )}
+        {optBusy && (
+          <div role="status" className="rounded-2xl bg-raised-2 p-3.5 text-sm">
+            <div className="mb-1 flex items-center gap-2 font-semibold">
+              <span className="min-w-0 truncate">{msg || "Trabajando…"}</span>
+              <span className="tnum ml-auto text-ink-3">{Math.round(pct)}%</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-raised"><div className="brand-bg h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%` }} /></div>
+          </div>
+        )}
+        {c.optimized && !optBusy && (
+          <div className="rounded-2xl border border-accent/40 bg-accent-soft/50 p-3.5 text-sm">
+            <p className="mb-1.5 flex items-center gap-2 font-bold text-accent-hi">
+              <Sparkles className="size-4" aria-hidden /> Optimizado con IA
+              <button type="button" onClick={() => runOpt("rev")} className="ml-auto font-semibold text-ink-2 underline-offset-2 hover:underline">Deshacer</button>
+            </p>
+            <ul className="list-disc space-y-0.5 pl-5 text-ink-2">
+              {(c.opt_note ?? []).map((n, i) => (
+                <li key={i} className="[overflow-wrap:anywhere]">{n}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         <ReviewPanel review={c.review} />
         <div className="mt-auto flex flex-wrap gap-2 pt-1">
           <Button size="sm" onClick={() => { setTitle(c.title); setTags(c.hashtags.join(" ")); setQuick(true); }} icon={<Pencil className="size-4" aria-hidden />} className="max-sm:flex-1">
             Título y hashtags
           </Button>
+          {onEdit && (
+            <Button size="sm" onClick={() => runOpt("opt")} loading={optBusy === "opt"} disabled={!!optBusy} icon={<Sparkles className="size-4" aria-hidden />} className="max-sm:flex-1">
+              Optimizar con IA
+            </Button>
+          )}
           <Button size="sm" variant="primary" onClick={() => setPublishing(true)} icon={<Send className="size-4" aria-hidden />} className="max-sm:w-full">
             Publicar
           </Button>

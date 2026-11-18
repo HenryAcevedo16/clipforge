@@ -155,6 +155,7 @@ async def create_job(
     logo_pos: str = Form("br"),
     logo_size: float = Form(16),
     logo_opacity: float = Form(80),
+    manual_ranges: str = Form(""),
     num_clips: int = Form(5),
     min_len: float = Form(20),
     max_len: float = Form(60),
@@ -215,7 +216,16 @@ async def create_job(
         lp = wd / ("logo" + ext)
         lp.write_bytes(data)
         logo_path = str(lp)
-    opts = _opts(logo_path=logo_path, logo_pos=logo_pos if logo_pos in ("tl", "tr", "bl", "br", "center") else "br",
+    ranges = []
+    if manual_ranges.strip():
+        import json as _json
+        try:
+            ranges = pipeline.parse_ranges(_json.loads(manual_ranges))
+        except Exception:
+            raise HTTPException(400, "Los segundos elegidos no son válidos.")
+        if not ranges:
+            raise HTTPException(400, "Pon al menos un clip con inicio y fin (el fin tiene que ser mayor que el inicio).")
+    opts = _opts(manual_ranges=ranges or None, logo_path=logo_path, logo_pos=logo_pos if logo_pos in ("tl", "tr", "bl", "br", "center") else "br",
                  logo_size=max(4.0, min(float(logo_size), 60.0)), logo_opacity=max(5.0, min(float(logo_opacity), 100.0)),
                  num_clips=max(1, min(num_clips, 30)), min_len=min_len, max_len=max_len, aspect=aspect,
                  layout=layout, caption_style=caption_style, words_per_line=words_per_line, font=font,
@@ -506,6 +516,51 @@ async def clip_rerender(job_id: str, index: int, request: Request):
 
     threading.Thread(target=work, daemon=True).start()
     return {"id": sub}
+
+
+def _clip_task(job_id: str, index: int, kind: str, fn):
+    """Hilo de fondo para optimizar/deshacer un clip (mismo esquema que 'volver a generar')."""
+    wd = _job_dir(job_id)
+    sub = f"{job_id}-e{index}-{uuid.uuid4().hex[:4]}"
+    JOBS[sub] = {"id": sub, "status": "queued", "progress": 0, "message": "En cola...", "log": [], "result": None, "created": time.time()}
+
+    def work() -> None:
+        job = JOBS[sub]
+
+        def progress(p: float, msg: str) -> None:
+            job["progress"], job["message"] = round(p, 1), msg
+
+        with LOCK:
+            if job.get("cancel_requested"):
+                job.update(status="cancelled", message="Cancelado.")
+                return
+            job["ident"] = pipeline.begin_job()
+            job["status"] = "running"
+            try:
+                fn(wd, index, progress)
+                job.update(status="done", progress=100, result=_refresh_result(job_id))
+            except pipeline.Cancelled:
+                job.update(status="cancelled", message="Cancelado.")
+            except Exception as e:
+                traceback.print_exc()
+                job.update(status="error", message=str(e)[:800])
+            finally:
+                pipeline.end_job()
+                _cleanup_partial(wd)
+
+    threading.Thread(target=work, daemon=True).start()
+    return {"id": sub}
+
+
+@app.post("/api/jobs/{job_id}/clips/{index}/optimize")
+def clip_optimize(job_id: str, index: int):
+    """La IA mejora el clip (inicio, final, título, gancho, hashtags) y lo vuelve a generar si hace falta."""
+    return _clip_task(job_id, index, "optimize", pipeline.optimize_clip)
+
+
+@app.post("/api/jobs/{job_id}/clips/{index}/revert")
+def clip_revert(job_id: str, index: int):
+    return _clip_task(job_id, index, "revert", pipeline.revert_optimization)
 
 
 @app.patch("/api/jobs/{job_id}/clips/{index}/meta")

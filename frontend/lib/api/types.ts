@@ -88,6 +88,9 @@ export interface ClipResult {
   layout?: string;
   edited?: boolean;
   meta_edited?: boolean; // título/hashtags cambiados a mano
+  optimized?: boolean; // la IA optimizó este clip
+  opt_note?: string[]; // qué cambió la IA
+  opt_prev?: Record<string, unknown> | null; // lo de antes (para deshacer)
   rev?: number; // versión del archivo: cambia cada vez que se vuelve a generar el clip
 }
 
@@ -155,6 +158,7 @@ export interface CreateJobInput {
   logo_pos?: WatermarkPosition;
   logo_size?: number; // % del ancho
   logo_opacity?: number; // %
+  manual_ranges?: string; // JSON [[inicio, fin], ...] en segundos: el usuario elige los cortes
   loudnorm?: boolean; // igualar el volumen
   refine?: boolean; // afinar inicio y final con IA
   complete_ideas?: boolean; // que cada clip termine cuando la idea queda cerrada
@@ -349,6 +353,8 @@ export interface Api {
   getClipEdit(jobId: string, index: number): Promise<ClipEditData>;
   renderClip(jobId: string, index: number, edits: Partial<ClipEdits>): Promise<{ id: string }>;
   deleteClip(jobId: string, index: number): Promise<void>;
+  optimizeClip(jobId: string, index: number): Promise<{ id: string }>;
+  revertClip(jobId: string, index: number): Promise<{ id: string }>;
   /** Guarda al instante título, descripción y hashtags (sin volver a generar el video). */
   updateClipMeta(jobId: string, index: number, meta: { title?: string; caption?: string; hashtags?: string[] }): Promise<void>;
   fileUrl(jobId: string, name: string, opts?: { download?: boolean }): string;

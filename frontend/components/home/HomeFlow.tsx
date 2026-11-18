@@ -56,15 +56,26 @@ interface Settings {
   smartDownload: boolean;
   quality: "max" | "1080";
   aiProvider: AiSource; // IA para este video (auto = la de Ajustes)
+  pick: "ia" | "manual"; // quién elige los cortes
   logoOn: boolean; // poner el logo de la plantilla como marca de agua
 }
 
 const DEFAULTS: Settings = {
   numClips: 5, minLen: 20, maxLen: 60, aspect: "9:16", captionStyle: "viral", review: true, templateId: null,
-  layout: "auto", jumpcuts: true, zoom: true, progressBar: true, colorPop: true, music: true, captions: true, showHook: true, highlightKw: true, loudnorm: true, useAi: true, refine: true, completeIdeas: true, videoAi: true, snapSilence: true, live: false, liveEvery: 3, smartDownload: true, quality: "max", aiProvider: "auto", logoOn: true,
+  layout: "auto", jumpcuts: true, zoom: true, progressBar: true, colorPop: true, music: true, captions: true, showHook: true, highlightKw: true, loudnorm: true, useAi: true, refine: true, completeIdeas: true, videoAi: true, snapSilence: true, live: false, liveEvery: 3, smartDownload: true, quality: "max", aiProvider: "auto", pick: "ia", logoOn: true,
 };
 
 const AI_NAMES: Record<AiSource, string> = { auto: "Automática", cli: "Mi suscripción de Claude", claude_api: "API de Claude", gemini: "Gemini", incluida: "IA incluida" };
+
+/** "1:23", "01:02:03" o "83" (segundos) -> segundos. null si no se entiende. */
+function parseTime(raw: string): number | null {
+  const t = raw.trim().replace(",", ".");
+  if (!t) return null;
+  const parts = t.split(":");
+  if (parts.length > 3 || parts.some((x) => x === "" || isNaN(Number(x)))) return null;
+  return parts.reduce((acc, x) => acc * 60 + Number(x), 0);
+}
+const fmtTime = (n: number) => `${Math.floor(n / 60)}:${String(Math.round(n % 60)).padStart(2, "0")}`;
 
 const LAYOUT_OPTIONS = [
   { value: "auto", label: "Automático", sub: "enfoca a quien habla" },
@@ -89,6 +100,9 @@ export function HomeFlow() {
   const [job, setJob] = useState<Job | null>(null);
   const [editing, setEditing] = useState<number | null>(null);
   const [previewing, setPreviewing] = useState(false);
+  const [ranges, setRanges] = useState<{ a: string; b: string }[]>([{ a: "", b: "" }]);
+  const manual = s.pick === "manual" && !s.live;
+  const parsedRanges = ranges.map((r) => ({ a: parseTime(r.a), b: parseTime(r.b) }));
   const refreshJob = useCallback(async () => {
     if (!jobId0.current) return;
     try {
@@ -182,8 +196,18 @@ export function HomeFlow() {
 
   const submit = async () => {
     setFormError(null);
-    if (s.minLen < 5 || s.maxLen > 180) return setFormError("Las duraciones deben estar entre 5 y 180 segundos.");
-    if (s.minLen >= s.maxLen) return setFormError("La duración mínima debe ser menor que la máxima.");
+    if (manual) {
+      const used = parsedRanges.filter((r, i) => ranges[i].a.trim() || ranges[i].b.trim());
+      if (used.length === 0) return setFormError("Pon al menos un clip con su inicio y su fin (por ejemplo 1:20 y 1:55).");
+      for (const [i, r] of used.entries()) {
+        if (r.a === null || r.b === null) return setFormError(`Clip ${i + 1}: escribe el inicio y el fin como minutos:segundos (1:20) o en segundos (80).`);
+        if (r.b - r.a < 1) return setFormError(`Clip ${i + 1}: el fin tiene que ser mayor que el inicio (mínimo 1 segundo).`);
+        if (r.b - r.a > 300) return setFormError(`Clip ${i + 1}: dura más de 5 minutos. Los clips cortos funcionan mejor.`);
+      }
+    } else {
+      if (s.minLen < 5 || s.maxLen > 180) return setFormError("Las duraciones deben estar entre 5 y 180 segundos.");
+      if (s.minLen >= s.maxLen) return setFormError("La duración mínima debe ser menor que la máxima.");
+    }
     setSending(true);
     try {
       const v = url.trim();
@@ -198,6 +222,7 @@ export function HomeFlow() {
       }
       const { id } = await api.createJob({
         logo,
+        manual_ranges: manual ? JSON.stringify(parsedRanges.filter((r) => r.a !== null && r.b !== null && (r.b as number) - (r.a as number) >= 1).map((r) => [r.a, r.b])) : undefined,
         logo_pos: tpl?.watermark.position,
         logo_size: tpl?.watermark.size,
         logo_opacity: tpl?.watermark.opacity,
@@ -417,6 +442,47 @@ export function HomeFlow() {
 
             <Card className="gap-5 border border-line p-5">
               <h3 className="text-lg font-extrabold">Tus clips</h3>
+              {!s.live && (
+                <Segmented<"ia" | "manual">
+                  label="¿Quién elige los cortes?"
+                  value={s.pick}
+                  onChange={(v) => setS({ ...s, pick: v })}
+                  options={[
+                    { value: "ia", label: "La IA", sub: "busca los mejores momentos" },
+                    { value: "manual", label: "Yo elijo los segundos", sub: "se respetan exactos" },
+                  ]}
+                />
+              )}
+              {manual && (
+                <div className="flex flex-col gap-3 rounded-2xl border border-line bg-raised-2/40 p-4">
+                  <p className="text-sm text-ink-2">Escribe el inicio y el fin de cada clip (por ejemplo <b className="text-ink">1:20</b> a <b className="text-ink">1:55</b>, o en segundos). La app los hace <b className="text-ink">exactamente</b> con esos segundos. Después, en cada clip, puedes pulsar <b className="text-ink">Optimizar con IA</b>.</p>
+                  <ul className="flex flex-col gap-2">
+                    {ranges.map((r, i) => {
+                      const pa = parsedRanges[i].a, pb = parsedRanges[i].b;
+                      const bad = (r.a.trim() && pa === null) || (r.b.trim() && pb === null) || (pa !== null && pb !== null && pb - pa < 1);
+                      return (
+                        <li key={i} className="flex flex-wrap items-end gap-2">
+                          <span className="tnum mb-3 w-14 text-sm font-bold text-ink-3">Clip {i + 1}</span>
+                          <Field label="Inicio" className="w-28">{(p) => <input {...p} value={r.a} onChange={(e) => setRanges(ranges.map((x, k) => (k === i ? { ...x, a: e.target.value } : x)))} placeholder="1:20" inputMode="text" className={cn(inputClass, bad && "border-bad")} />}</Field>
+                          <Field label="Fin" className="w-28">{(p) => <input {...p} value={r.b} onChange={(e) => setRanges(ranges.map((x, k) => (k === i ? { ...x, b: e.target.value } : x)))} placeholder="1:55" inputMode="text" className={cn(inputClass, bad && "border-bad")} />}</Field>
+                          <span className="tnum mb-3 min-w-16 text-sm text-ink-2">{pa !== null && pb !== null && pb > pa ? `${fmtTime(pb - pa)} (${Math.round(pb - pa)} s)` : ""}</span>
+                          {ranges.length > 1 && (
+                            <Button size="sm" variant="ghost" onClick={() => setRanges(ranges.filter((_, k) => k !== i))} icon={<X className="size-4" aria-hidden />} className="mb-1">
+                              Quitar
+                            </Button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div>
+                    <Button size="sm" onClick={() => setRanges([...ranges, { a: "", b: "" }])} disabled={ranges.length >= 30}>
+                      + Añadir otro clip
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {!manual && (
               <div className="grid gap-5 sm:grid-cols-3">
                 <Field label="¿Cuántos clips?" hint="Entre 1 y 30">
                   {(p) => <input {...p} type="number" inputMode="numeric" min={1} max={30} value={s.numClips} onChange={(e) => setS({ ...s, numClips: Math.max(1, Math.min(30, Number(e.target.value) || 1)) })} className={inputClass} />}
@@ -428,6 +494,7 @@ export function HomeFlow() {
                   {(p) => <input {...p} type="number" inputMode="numeric" min={10} max={180} value={s.maxLen} onChange={(e) => setS({ ...s, maxLen: Number(e.target.value) })} className={inputClass} />}
                 </Field>
               </div>
+              )}
               <Segmented
                 label="Formato"
                 value={s.aspect}
@@ -607,7 +674,7 @@ export function HomeFlow() {
                 Atrás
               </Button>
               <Button variant="primary" onClick={submit} loading={sending} icon={<Sparkles className="size-4" aria-hidden />} className="min-h-12 px-7">
-                Generar {s.numClips} {s.numClips === 1 ? "clip" : "clips"}
+                Generar {manual ? Math.max(1, parsedRanges.filter((r, i) => ranges[i].a.trim() || ranges[i].b.trim()).length) : s.numClips} {(manual ? parsedRanges.filter((r, i) => ranges[i].a.trim() || ranges[i].b.trim()).length : s.numClips) === 1 ? "clip" : "clips"}
               </Button>
             </div>
           </section>

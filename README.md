@@ -239,3 +239,7 @@ En **Ajustes → Inteligencia artificial → Gemini**, pulsa **"Ver los modelos 
 
 ## 🎥 La IA ve el video del clip
 Con Gemini, la **revisión con IA** ya no mira solo 9 fotogramas: recibe el **video del clip entero con su audio** (una copia liviana de ~480p). Así detecta mejor cortes bruscos, voz que se corta al final, subtítulos que tapan la cara o un encuadre raro. Se activa en el paso 2 → "Que la IA vea el video del clip". Funciona mejor con los modelos Gemini 4 (`gemini-4-hydrogen`, `gemini-4-argon`); si el modelo no acepta video, la app usa fotogramas. Con Claude o la IA incluida se siguen usando fotogramas.
+
+## ⏱️ Tú eliges los segundos + "Optimizar con IA"
+1. **Elegir los cortes tú:** en el paso 2, "¿Quién elige los cortes?" → **Yo elijo los segundos**. Escribes inicio y fin de cada clip (`1:20` a `1:55`, o en segundos) y la app los hace **exactamente** con esos segundos: no los mueve, no quita silencios y solo transcribe esos tramos (rápido aunque el video sea largo). La IA, si hay, solo escribe título, gancho, descripción y hashtags.
+2. **Optimizar con IA:** cada clip tiene el botón **Optimizar con IA**. La IA activa (Gemini, Claude o tu suscripción) afina el inicio y el final (que empiece en el gancho y termine cuando la idea queda cerrada), y reescribe título, gancho, descripción, hashtags y palabras clave. Te explica qué cambió y puedes **Deshacer** para volver a como estaba.

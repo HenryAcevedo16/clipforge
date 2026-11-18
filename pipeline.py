@@ -182,6 +182,7 @@ class Options:
     fps: Optional[float] = None     # None = el del original (máx 60)
     loudnorm: bool = True
     review: bool = True             # Claude revisa cada clip terminado (necesita API key)
+    manual_ranges: list = field(default_factory=list)   # [[inicio, fin], ...] en segundos: el usuario elige los cortes (sin selección de la IA)
     video_ai: bool = True           # con Gemini: la IA VE el video del clip (imagen + audio) al revisarlo, no solo fotogramas sueltos
     cookies_from_browser: Optional[str] = None  # "chrome", "firefox"... por si YouTube lo pide
     # --- edición para retener al espectador ---
@@ -3221,6 +3222,95 @@ def align_clip(c: Clip, tr_sec: dict, approx: Optional[dict] = None, pad: float 
         c.start, c.end = max(0.0, a["s"] - 0.1), b["e"] + 0.35
 
 
+# --------------------------------------------------------------------------- #
+# Modo manual: el usuario elige los segundos exactos de cada clip
+# --------------------------------------------------------------------------- #
+def parse_ranges(raw) -> list:
+    """Valida y normaliza [[inicio, fin], ...] (segundos). Descarta los inválidos."""
+    out = []
+    for r in raw or []:
+        try:
+            a, b = float(r[0]), float(r[1])
+        except (TypeError, ValueError, IndexError):
+            continue
+        if a >= 0 and b - a >= 1.0:
+            out.append((round(a, 2), round(b, 2)))
+    return out[:30]
+
+
+def transcribe_ranges(listen: Path, workdir: Path, opts: Options, ranges: list, progress: ProgressFn = _noop) -> dict:
+    """Transcribe solo los tramos elegidos (no el video entero): mucho más rápido en videos largos."""
+    segments, language = [], opts.language
+    for k, (a, b) in enumerate(ranges):
+        check_cancel()
+        pa, pb = max(0.0, a - 2.0), b + 2.0
+        sub = workdir / f"rng_{k:02d}"
+        sub.mkdir(exist_ok=True)
+        wav = sub / "tramo.wav"
+        r = _sp_run(["ffmpeg", "-y", "-v", "error", "-ss", f"{pa:.2f}", "-t", f"{pb - pa:.2f}", "-i", str(listen), "-vn",
+                     "-ac", "1", "-ar", "16000", str(wav)], capture_output=True)
+        if r.returncode != 0 or not wav.exists():
+            raise RuntimeError(f"No pude leer el audio del tramo {k + 1} ({a:.0f}-{b:.0f} s): ¿está dentro de la duración del video?")
+        progress(12 + 28 * k / max(1, len(ranges)), f"Transcribiendo solo el tramo {k + 1} de {len(ranges)}...")
+        t = transcribe(wav, sub, replace(opts, language=language), progress)
+        language = language or t.get("language")
+        for s_ in t.get("segments", []):
+            segments.append(dict(s_, s=s_["s"] + pa, e=s_["e"] + pa,
+                                 words=[dict(w, s=w["s"] + pa, e=w["e"] + pa) for w in s_.get("words", [])]))
+        shutil.rmtree(sub, ignore_errors=True)
+    segments.sort(key=lambda x: x["s"])
+    return {"language": language, "segments": segments}
+
+
+def manual_clips(tr: dict, ranges: list, opts: Options, video_title: str = "") -> list:
+    """Clips con EXACTAMENTE los segundos que eligió el usuario. Título, gancho y hashtags los pone la IA si hay; si no, el texto."""
+    from pydantic import BaseModel, Field
+    words = _all_words(tr)
+    texts, clips = [], []
+    for i, (a, b) in enumerate(ranges, 1):
+        txt = " ".join(w["w"] for w in words if w["s"] >= a - 0.05 and w["e"] <= b + 0.05).strip()
+        texts.append(txt)
+        first = " ".join(txt.split()[:8]) or f"Clip {i}"
+        clips.append(Clip(index=i, start=a, end=b, title=first[:60], hook=" ".join(txt.split()[:6]).upper(), score=60.0,
+                          caption=first, hashtags=["#shorts", "#viral", "#fyp"], keywords=_auto_keywords(txt)))
+    if not (opts.use_ai and ai_backend()) or not any(texts):
+        return clips
+
+    class Meta(BaseModel):
+        clip: int = Field(description="número del clip")
+        title: str = Field(description="título para publicar, máx 60 caracteres")
+        hook: str = Field(description="texto en pantalla los primeros 3 s, máx 7 palabras, que genere curiosidad")
+        caption: str = Field(description="descripción con una pregunta que invite a comentar")
+        hashtags: list[str] = Field(description="3-6 hashtags")
+        keywords: list[str] = Field(description="3-8 palabras EXACTAS dichas en el clip que conviene resaltar")
+        virality_score: int = Field(description="0-100: potencial en redes")
+
+    class Metas(BaseModel):
+        clips: list[Meta]
+
+    listing = "\n\n".join(f"CLIP {i} ({a:.0f}-{b:.0f} s): {t or '(sin voz)'}" for i, ((a, b), t) in enumerate(zip(ranges, texts), 1))
+    prompt = f"""Eres editor de clips virales para TikTok/Shorts/Reels. El usuario YA eligió estos cortes: no los cambies.
+Escribe para cada uno el título, el gancho de pantalla, la descripción, los hashtags y las palabras clave, en el mismo
+idioma del video. Video: "{video_title}".
+
+{listing}"""
+    try:
+        res = ask_claude(prompt, Metas, opts)
+    except Cancelled:
+        raise
+    except Exception:   # noqa: BLE001
+        return clips
+    by = {m.clip: m for m in res.clips}
+    for c in clips:
+        m = by.get(c.index)
+        if m:
+            c.title, c.hook, c.caption, c.score = m.title, m.hook, m.caption, float(m.virality_score)
+            c.hashtags = [h if h.startswith("#") else "#" + h for h in m.hashtags]
+            c.keywords = [_norm(k) for kw in m.keywords for k in kw.split() if _norm(k)][:10]
+    return clips
+
+
+
 def process(source: str, workdir: Path, opts: Options, progress: ProgressFn = _noop,
             on_update: Optional[Callable[[dict], None]] = None) -> dict:
     global _AI_PROVIDER
@@ -3237,6 +3327,8 @@ def process(source: str, workdir: Path, opts: Options, progress: ProgressFn = _n
         prof = system_profile()
         progress(0.8, f"Tu equipo: {prof['summary']} → transcripción '{opts.whisper_model}' en {prof['transcribe_on']}, "
                       f"render en {prof['render_on']}")
+    if parse_ranges(opts.manual_ranges):
+        opts = replace(opts, jumpcuts=False, num_clips=len(parse_ranges(opts.manual_ranges)))   # los segundos elegidos se respetan: no se quitan silencios
 
     workdir.mkdir(parents=True, exist_ok=True)
     (workdir / "job.json").write_text(json.dumps({"source": source, "opts": asdict(opts)}, ensure_ascii=False),
@@ -3288,8 +3380,14 @@ def process(source: str, workdir: Path, opts: Options, progress: ProgressFn = _n
     if use_gpu(opts):
         progress(11.5, "Detectando GPU...")
     progress(11.8, "Aceleración: " + describe_device(opts))
-    tr = caps if caps else transcribe(listen, workdir, opts, progress)
-    clips = select_clips(listen, tr, opts, title, progress)
+    manual = parse_ranges(opts.manual_ranges)
+    if manual:
+        progress(12, f"Modo manual: {len(manual)} clip(s) con los segundos que elegiste (sin cambiarlos).")
+        tr = caps if caps else transcribe_ranges(listen, workdir, opts, manual, progress)
+        clips = manual_clips(tr, manual, opts, title)
+    else:
+        tr = caps if caps else transcribe(listen, workdir, opts, progress)
+        clips = select_clips(listen, tr, opts, title, progress)
     if not clips:
         raise RuntimeError("No se encontraron segmentos con voz para recortar.")
     sec_pad = 4.0 if caps else 1.5      # con subtítulos los tiempos son aproximados: más margen
@@ -3376,7 +3474,7 @@ def process(source: str, workdir: Path, opts: Options, progress: ProgressFn = _n
             if scene.get("tipo"):
                 progress(p0, f"Tipo de video: {scene['tipo'].replace('_', ' ')}")
         c.start, c.end = c.start - off, c.end - off
-        if exact_ok:
+        if exact_ok and not opts.manual_ranges:    # en modo manual los segundos del usuario no se tocan
             align_clip(c, v_tr, cap_tr)
             if opts.snap_silence:
                 snap_to_silence(v_src, [c])
@@ -3595,6 +3693,132 @@ def update_clip_meta(workdir: Path, index: int, meta: dict) -> dict:
     c["meta_edited"] = True
     res_path.write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
     return res
+
+
+# --------------------------------------------------------------------------- #
+# Optimizar un clip con la IA (después de generarlo)
+# --------------------------------------------------------------------------- #
+_OPT_FIELDS = ("start", "end", "title", "hook", "caption", "hashtags", "keywords")
+
+
+def _set_clip_fields(workdir: Path, index: int, fields_: dict) -> dict:
+    res_path = workdir / "result.json"
+    res = json.loads(res_path.read_text(encoding="utf-8"))
+    pos = next((k for k, x in enumerate(res["clips"]) if int(x["index"]) == int(index)), None)
+    if pos is None:
+        raise KeyError("clip no encontrado")
+    for k, v in fields_.items():
+        if v is None:
+            res["clips"][pos].pop(k, None)
+        else:
+            res["clips"][pos][k] = v
+    res_path.write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+    return res["clips"][pos]
+
+
+def optimize_clip(workdir: Path, index: int, progress: ProgressFn = _noop) -> dict:
+    """La IA mejora un clip ya generado: afina el inicio y el final (para que empiece en el gancho y termine cuando la
+    idea queda cerrada), y reescribe título, gancho, descripción, hashtags y palabras clave. Guarda lo anterior para deshacer."""
+    from pydantic import BaseModel, Field
+    global _AI_PROVIDER
+    job = _job_info(workdir)
+    if not job:
+        raise RuntimeError("Este trabajo es de una versión anterior y no se puede optimizar.")
+    base = Options()
+    o = resolve_auto(replace(base, **{k: v for k, v in job.get("opts", {}).items() if hasattr(base, k)}))
+    _AI_PROVIDER = norm_provider(o.ai_provider)
+    if not ai_backend():
+        raise RuntimeError("Para optimizar con IA necesitas tener una IA activa (Ajustes → Inteligencia artificial).")
+    data = load_clip_for_edit(workdir, index)
+    c, words = data["clip"], data["words"]
+    if not words:
+        raise RuntimeError("No hay transcripción guardada de este clip para optimizar.")
+    progress(5, "La IA está leyendo el clip y lo que viene antes y después...")
+    cur = [k for k, w in enumerate(words) if w["s"] >= c["start"] - 0.05 and w["e"] <= c["end"] + 0.05]
+    if not cur:
+        raise RuntimeError("No encontré palabras dentro de este clip.")
+    a0, b0 = cur[0], cur[-1]
+    lo_i = max(0, a0 - 60)
+    hi_i = min(len(words), b0 + 90)
+    listing = " ".join(("»" if k == a0 else "") + f"[{k}|{words[k]['s']:.1f}]{words[k]['w']}" + ("«" if k == b0 else "")
+                       for k in range(lo_i, hi_i))
+    dur = c["end"] - c["start"]
+    lo, hi = max(5.0, min(o.min_len, dur * 0.7)), max(o.max_len, dur * 1.25)
+
+    class Optim(BaseModel):
+        start_word: int = Field(description="índice de la primera palabra del clip (el gancho)")
+        end_word: int = Field(description="índice de la última palabra (donde la idea queda cerrada, fin de frase)")
+        title: str = Field(description="título para publicar, máx 60 caracteres")
+        hook: str = Field(description="texto en pantalla los primeros 3 s, máx 7 palabras, que genere curiosidad")
+        caption: str = Field(description="descripción con una pregunta que invite a comentar")
+        hashtags: list[str] = Field(description="3-6 hashtags")
+        keywords: list[str] = Field(description="3-8 palabras EXACTAS del clip que conviene resaltar")
+        cambios: list[str] = Field(description="2-5 frases cortas, en español, explicando qué cambiaste y por qué")
+
+    prompt = f"""Eres el editor jefe de un canal de TikTok/Shorts/Reels. Optimiza este clip YA GENERADO para que retenga más.
+Cada palabra aparece como [índice|segundo]palabra. » marca el inicio actual y « el final actual; hay contexto antes y después.
+
+Título actual: {c['title']}
+Gancho actual: {c.get('hook') or '(ninguno)'}
+Hashtags actuales: {' '.join(c.get('hashtags', []))}
+Duración actual: {dur:.1f} s
+
+{listing}
+
+Haz esto:
+1. INICIO: que el clip empiece en la primera palabra del gancho (sin muletillas, saludos ni conectores como "y", "bueno", "entonces"),
+   sin cortar una frase a la mitad.
+2. FINAL: que termine cuando la idea o la historia queda CERRADA, al final de una frase. NUNCA cortes mientras quien habla sigue
+   explicando: si lo que se dice después completa la idea, inclúyelo. Si hay relleno ajeno al final, quítalo.
+3. Duración total (de start_word a end_word): entre {lo:.0f} y {hi:.0f} segundos.
+4. Título, gancho, descripción, hashtags y keywords nuevos y mejores, en el mismo idioma. Las keywords deben ser palabras que se dicen.
+5. Si el clip ya está bien, deja los mismos índices y mejora solo los textos.
+En "cambios" explica brevemente qué mejoraste."""
+    progress(15, "La IA está optimizando el clip...")
+    r = ask_claude(prompt, Optim, o)
+    ns, ne = c["start"], c["end"]
+    if 0 <= r.start_word < r.end_word < len(words):
+        s2, e2 = max(0.0, words[r.start_word]["s"] - 0.1), words[r.end_word]["e"] + 0.35
+        if lo * 0.9 <= e2 - s2 <= hi * 1.05 and abs(s2 - c["start"]) <= 25 and abs(e2 - c["end"]) <= 30:
+            ns, ne = s2, e2
+    kws = [_norm(k) for kw in r.keywords for k in kw.split() if _norm(k)][:10]
+    tags = [h if h.startswith("#") else "#" + h for h in r.hashtags]
+    prev = {k: c.get(k) for k in _OPT_FIELDS}
+    new = {"start": ns, "end": ne, "title": r.title.strip() or c["title"], "hook": r.hook.strip(), "caption": r.caption.strip() or c.get("caption", ""),
+           "hashtags": tags or c.get("hashtags", []), "keywords": kws or c.get("keywords", [])}
+    need_render = (abs(ns - c["start"]) > 0.15 or abs(ne - c["end"]) > 0.15 or new["hook"] != (c.get("hook") or "")
+                   or set(new["keywords"]) != set(c.get("keywords") or []))
+    if need_render:
+        progress(30, "Aplicando los cambios al video...")
+        rerender_clip(workdir, index, dict(new, show_hook=bool(new["hook"])), lambda p, m: progress(30 + p * 0.68, m))
+    else:
+        update_clip_meta(workdir, index, new)
+    note = list(r.cambios)[:6]
+    if abs(ns - c["start"]) > 0.15 or abs(ne - c["end"]) > 0.15:
+        note.insert(0, f"Corte: de {c['start']:.1f}–{c['end']:.1f} s a {ns:.1f}–{ne:.1f} s ({ne - ns:.0f} s en total).")
+    out = _set_clip_fields(workdir, index, {"opt_prev": prev, "opt_note": note, "optimized": True})
+    progress(100, "Clip optimizado.")
+    return out
+
+
+def revert_optimization(workdir: Path, index: int, progress: ProgressFn = _noop) -> dict:
+    """Vuelve el clip a como estaba antes de optimizarlo con la IA."""
+    data = load_clip_for_edit(workdir, index)
+    c = data["clip"]
+    prev = c.get("opt_prev")
+    if not prev:
+        raise RuntimeError("Este clip no tiene una optimización que deshacer.")
+    prev = {k: v for k, v in prev.items() if v is not None}
+    need_render = (abs(prev.get("start", c["start"]) - c["start"]) > 0.15 or abs(prev.get("end", c["end"]) - c["end"]) > 0.15
+                   or (prev.get("hook") or "") != (c.get("hook") or "") or set(prev.get("keywords") or []) != set(c.get("keywords") or []))
+    if need_render:
+        rerender_clip(workdir, index, dict(prev, show_hook=bool(prev.get("hook"))), progress)
+    else:
+        update_clip_meta(workdir, index, prev)
+    out = _set_clip_fields(workdir, index, {"opt_prev": None, "opt_note": None, "optimized": None})
+    progress(100, "Optimización deshecha.")
+    return out
+
 
 
 def delete_clip(workdir: Path, index: int) -> dict:
