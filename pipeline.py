@@ -1861,7 +1861,8 @@ def _hist(frame):
 
 SPLIT_TOP = 0.38   # fracción de la altura para la webcam en el modo stream
 
-CAM_MAX_UP = 3.2   # cuánto se puede ampliar la webcam sin que se vea borrosa (más que eso: tarjeta nítida sobre fondo difuminado)
+CAM_MAX_UP = 2.2   # ampliación máxima de la webcam antes de pasar a la tarjeta nítida sobre fondo difuminado
+CAM_FILL_UP = 2.0  # al seguir la cara: se aleja el encuadre hasta que la webcam no se amplíe más de esto (si no, borrosa)
 
 
 def _unsharp(img: np.ndarray, amount: float = 0.6, sigma: float = 1.0) -> np.ndarray:
@@ -2668,7 +2669,7 @@ def _render_clip_once(src: Path, clip: Clip, tr: dict, opts: Options, outdir: Pa
         bot_h = out_h - top_h
         fcx, fcy, fhh = cam
         fcx += -0.15 * fhh if fcx < sw / 2 else 0.15 * fhh
-        cw = min(sw, 2.1 * fhh)
+        cw = min(sw, max(2.1 * fhh, out_w / CAM_FILL_UP))   # se aleja hasta que haya resolución suficiente
         ch = min(sh, cw * top_h / out_w)
         cw = ch * out_w / top_h
         cx0 = int(np.clip(fcx - cw / 2, 0, sw - cw))
