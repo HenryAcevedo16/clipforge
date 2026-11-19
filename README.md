@@ -133,8 +133,15 @@ analiza lo nuevo y los clips buenos van apareciendo en la página mientras el di
 
 ## Mejor selección y cortes (nuevo)
 - La IA puntúa con dureza y devuelve **menos clips si no hay tantos momentos buenos** (nada por debajo de 50).
+- La selección local también usa señales de audiencia: **picos del chat de Twitch** en directos y **tramos más repetidos de YouTube** cuando yt-dlp entrega ese mapa.
+- Estas señales solo añaden una bonificación limitada al ranking; no sustituyen la transcripción, la energía del audio ni que el fragmento tenga sentido por sí mismo.
+- En cada tarjeta se muestra el motivo de selección, incluidos los picos de chat o repeticiones cuando aportaron puntuación.
 - Se comprueba que cada clip empieza en las palabras exactas del gancho.
 - Los cortes se mueven al **silencio real del audio**, para no cortar una respiración o media palabra.
+
+## Streams y webcam
+- El modo Automático reutiliza el detector de webcam y el renderizador actuales: cuando identifica un stream, coloca al streamer arriba y el juego abajo. No se descarga ni instala un segundo motor de edición.
+- La lectura anónima del chat de Twitch intenta conectarse primero por IRC/TLS y conserva el puerto sin cifrar como alternativa de compatibilidad.
 
 ## Conversaciones y podcasts (nuevo)
 - **Enfoca a quien habla:** con dos o más personas en el plano, la app mira el movimiento de la boca de cada una
