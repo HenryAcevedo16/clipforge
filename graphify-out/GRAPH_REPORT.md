@@ -1,7 +1,7 @@
 # Graph Report - clipforge  (2026-11-19)
 
 ## Corpus Check
-- 84 files · ~75,882 words
+- 84 files · ~75,932 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 10 file(s) not represented in the graph (top: .bat 5, (none) 3, .example 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `0248c8be`
+- Built from commit: `54d2c35d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -252,11 +252,11 @@ Nodes (10): _avoid_box(), Clip, _cut_clip(), keep_intervals(), player_track(), r
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `gemini_key()` connect `ai_backend` to `pipeline.py`, `NovoClip ✂️ — tu propia app de clipping`?**
-  _High betweenness centrality (0.046) - this node is a cross-community bridge._
+  _High betweenness centrality (0.036) - this node is a cross-community bridge._
 - **Should `app.py` be split into smaller, more focused modules?**
   _Cohesion score 0.12 - nodes in this community are weakly interconnected._
 - **Why does `IA incluida o clave propia (nuevo)` connect `NovoClip ✂️ — tu propia app de clipping` to `ai_backend`?**
-  _High betweenness centrality (0.038) - this node is a cross-community bridge._
+  _High betweenness centrality (0.033) - this node is a cross-community bridge._
 - **Should `pipeline.py` be split into smaller, more focused modules?**
   _Cohesion score 0.06845513413506013 - nodes in this community are weakly interconnected._
 - **Should `ai_backend` be split into smaller, more focused modules?**

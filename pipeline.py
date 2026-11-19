@@ -575,6 +575,7 @@ def describe_device(opts: Options) -> str:
 # --------------------------------------------------------------------------- #
 COOKIES_FILE = ROOT / "cookies.txt"          # exportado del navegador (formato Netscape); opcional
 COOKIE_BROWSERS = ("firefox", "edge", "chrome", "brave", "opera", "vivaldi")
+YT_CLIENTS = ("tv", "web_safari", "mweb", "android_vr", "tv_simply")   # otras "puertas" de YouTube que a veces no piden iniciar sesión
 
 
 def _is_bot_check(err: BaseException) -> bool:
@@ -588,6 +589,8 @@ def _cookie_opts(method: Optional[str]) -> dict:
         return {}
     if method == "file":
         return {"cookiefile": str(COOKIES_FILE)}
+    if method.startswith("client:"):
+        return {"extractor_args": {"youtube": {"player_client": [method.split(":", 1)[1]]}}}
     return {"cookiesfrombrowser": (method,)}
 
 
@@ -597,7 +600,8 @@ def _cookie_methods(opts: Options) -> list:
     remembered = load_config().get("yt_cookies")
     if remembered:
         first.insert(0, remembered)
-    rest = [None] + (["file"] if COOKIES_FILE.is_file() else []) + list(COOKIE_BROWSERS)
+    rest = ([None] + (["file"] if COOKIES_FILE.is_file() else []) + ["client:" + c for c in YT_CLIENTS]
+            + list(COOKIE_BROWSERS))
     out: list = []
     for m in first + rest:
         if m not in out:
@@ -638,14 +642,15 @@ def yt_run(ydl_opts: dict, opts: Options, fn: Callable, progress: ProgressFn = _
             if k + 1 < len(methods):
                 nm = methods[k + 1]
                 if nm:
-                    progress(2, "YouTube pide verificar que no eres un robot; pruebo con " +
-                             ("cookies.txt" if nm == "file" else f"tu sesión de {nm}") + "...")
+                    how = ("cookies.txt" if nm == "file" else f"otro modo de acceso ({nm[7:]})" if nm.startswith("client:")
+                           else f"tu sesión de {nm}")
+                    progress(2, f"YouTube pide verificar que no eres un robot; pruebo con {how}...")
     raise RuntimeError(
         "YouTube pide iniciar sesión para confirmar que no eres un robot y no se pudo usar ninguna sesión.\n"
         "Solución (elige una):\n"
-        "  1) Abre Firefox, entra a YouTube con tu cuenta, cierra Firefox y vuelve a intentar (la app usa esa sesión sola).\n"
-        "  2) O exporta tus cookies con la extensión «Get cookies.txt LOCALLY» estando en youtube.com y guarda el archivo "
-        f"como  {COOKIES_FILE.name}  dentro de la carpeta de NovoClip.\n"
+        f"  1) LO MÁS SEGURO: exporta tus cookies con la extensión «Get cookies.txt LOCALLY» estando en youtube.com con tu sesión iniciada "
+        f"y guarda el archivo como  {COOKIES_FILE.name}  dentro de la carpeta de NovoClip (Chrome/Edge en Windows no dejan leer sus cookies solos).\n"
+        "  2) O descarga el video por otro medio y súbelo a NovoClip como archivo.\n"
         "  3) Actualiza el descargador:  .venv\\Scripts\\pip install -U \"yt-dlp[default]\"") from first_err
 
 
