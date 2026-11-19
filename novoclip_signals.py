@@ -99,3 +99,17 @@ def replay_intervals(heatmap: Iterable[Mapping]) -> list[tuple[float, float]]:
         else:
             merged.append([a, b])
     return [(a, b) for a, b in merged]
+
+
+
+def audience_bonus(start: float, end: float, chat: Iterable, replay: Iterable) -> tuple[float, list[str]]:
+    """Small, capped ranking bonus for audience reactions; never a standalone picker."""
+    chat_ratio = overlap_ratio(start, end, chat)
+    replay_ratio = overlap_ratio(start, end, replay)
+    score = 12.0 * chat_ratio + 8.0 * replay_ratio
+    reasons = []
+    if chat_ratio >= 0.10:
+        reasons.append("pico de actividad en el chat")
+    if replay_ratio >= 0.15:
+        reasons.append("tramo repetido por la audiencia")
+    return score, reasons
