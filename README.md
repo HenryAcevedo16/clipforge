@@ -274,3 +274,7 @@ En modo directo la nota mínima por defecto es 60 (antes 70) y baja 8 puntos por
 ### Clips de directo editables
 
 Cada clip de un directo guarda su propio trozo de video (15 s de margen a cada lado, carpeta `live_src/`), así que también puedes cambiarle el gancho, el título, recortarlo y usar **Optimizar con IA** aunque el directo siga en marcha. Los cambios no se pierden cuando llegan clips nuevos. Los clips de directos hechos antes de esta versión no tienen ese trozo y no se pueden editar.
+
+### Gratis por defecto; la IA solo al optimizar
+
+Por defecto NovoClip elige los clips **en tu PC, gratis** (volumen, risas, ganchos, ritmo y picos del chat) y no usa tokens ni tu suscripción. La IA (Claude o Gemini) solo entra cuando pulsas **Optimizar con IA** en un clip: ahí corrige cortes, gancho, título y hashtags y vuelve a revisarlo. Si quieres, puedes encender «Elegir los mejores momentos con IA» y «Revisar clips con IA» al crear un proyecto.

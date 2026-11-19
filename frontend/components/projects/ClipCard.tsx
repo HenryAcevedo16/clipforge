@@ -36,7 +36,7 @@ export function ReviewPanel({ review }: { review: ClipResult["review"] }) {
     );
   }
   if (!isReview(review)) {
-    return <p className="rounded-2xl border border-dashed border-line-2 px-4 py-3 text-sm text-ink-3">Este clip no tiene revisión de IA.</p>;
+    return <p className="rounded-2xl border border-dashed border-line-2 px-4 py-3 text-sm text-ink-3">Este clip se eligió gratis, sin IA. Pulsa «Optimizar con IA» para que Claude lo revise y lo mejore.</p>;
   }
   const items = review.problemas.length + review.sugerencias.length;
   // El veredicto sigue a la nota: lo que la IA llama "aprobado" no puede contradecir un 0 en rojo.

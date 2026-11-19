@@ -63,8 +63,8 @@ interface Settings {
 }
 
 const DEFAULTS: Settings = {
-  numClips: 5, minLen: 20, maxLen: 60, aspect: "9:16", captionStyle: "viral", review: true, templateId: null,
-  layout: "auto", jumpcuts: true, zoom: true, progressBar: true, colorPop: true, music: true, captions: true, showHook: true, highlightKw: true, loudnorm: true, useAi: true, refine: true, completeIdeas: true, videoAi: true, snapSilence: true, live: false, liveEvery: 3, smartDownload: true, quality: "max", aiProvider: "auto", pick: "ia", logoOn: true,
+  numClips: 5, minLen: 20, maxLen: 60, aspect: "9:16", captionStyle: "viral", review: false, templateId: null,
+  layout: "auto", jumpcuts: true, zoom: true, progressBar: true, colorPop: true, music: true, captions: true, showHook: true, highlightKw: true, loudnorm: true, useAi: false, refine: true, completeIdeas: true, videoAi: false, snapSilence: true, live: false, liveEvery: 3, smartDownload: true, quality: "max", aiProvider: "auto", pick: "ia", logoOn: true,
 };
 
 const AI_NAMES: Record<AiSource, string> = { auto: "Automática", cli: "Mi suscripción de Claude", claude_api: "API de Claude", gemini: "Gemini", incluida: "IA incluida" };
@@ -651,7 +651,7 @@ export function HomeFlow() {
                   ]}
                 />
               ) : null)}
-              <Switch checked={s.useAi} onChange={(v) => setS({ ...s, useAi: v })} label="Elegir los mejores momentos con IA" hint="Si lo apagas, usa un método básico sin IA (más rápido, menos preciso)." />
+              <Switch checked={s.useAi} onChange={(v) => setS({ ...s, useAi: v })} label="Elegir los mejores momentos con IA" hint="Apagado (recomendado para ahorrar): elige gratis en tu PC por volumen, risas, ganchos y ritmo. La IA solo entra cuando pulsas «Optimizar con IA» en un clip." />
               <Switch checked={s.refine} onChange={(v) => setS({ ...s, refine: v })} disabled={!s.useAi} label="Afinar inicio y final con IA" hint="Una segunda pasada para que el clip empiece y termine justo." />
               <Switch checked={s.completeIdeas} onChange={(v) => setS({ ...s, completeIdeas: v })} label="Terminar siempre la idea" hint="El clip no se corta a mitad de frase: si quien habla sigue explicando, se alarga hasta cerrar la idea (sin pasar del máximo)." />
               <Switch checked={s.snapSilence} onChange={(v) => setS({ ...s, snapSilence: v })} label="Cortar en silencios naturales" hint="Evita cortar a mitad de palabra." />

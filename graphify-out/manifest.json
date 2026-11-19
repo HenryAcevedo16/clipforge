@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "frontend/components/home/HomeFlow.tsx": {
-    "mtime": 1795046076.1352386,
-    "seen": 1795086669.3268576,
-    "ast_hash": "78ecb66f159f77a2ce413c724b86336f",
+    "mtime": 1795093326.3101602,
+    "seen": 1795093393.3305538,
+    "ast_hash": "8638f95f4756010bce403bf0c3b068ec",
     "semantic_hash": ""
   },
   "frontend/components/home/RecentProjects.tsx": {
@@ -126,9 +126,9 @@
     "semantic_hash": ""
   },
   "frontend/components/projects/ClipCard.tsx": {
-    "mtime": 1795033294.5060408,
-    "seen": 1795086669.3268628,
-    "ast_hash": "db830c22ab8768a89fa33136b57bb46c",
+    "mtime": 1795093331.5378835,
+    "seen": 1795093393.3305593,
+    "ast_hash": "e29bfb2e6ac57a1d0f58f78d3346f7c8",
     "semantic_hash": ""
   },
   "frontend/components/projects/ClipEditor.tsx": {
@@ -306,9 +306,9 @@
     "semantic_hash": ""
   },
   "frontend/lib/api/types.ts": {
-    "mtime": 1795033294.5052195,
-    "seen": 1795086669.3269055,
-    "ast_hash": "3c4fc6ef660a2d07dfe0e8eb768f2f23",
+    "mtime": 1795093326.3115897,
+    "seen": 1795093393.3305984,
+    "ast_hash": "080ec6d10ece25c29c6cef42935653c6",
     "semantic_hash": ""
   },
   "frontend/lib/api/wait.ts": {
@@ -402,9 +402,9 @@
     "semantic_hash": ""
   },
   "pipeline.py": {
-    "mtime": 1795086660.8134122,
-    "seen": 1795086669.3269267,
-    "ast_hash": "c9017849bad4119c994c0963e0fcbcae",
+    "mtime": 1795093322.5482643,
+    "seen": 1795093393.3306196,
+    "ast_hash": "3e2e29328ca32c9ffc666a7d3ee2e95e",
     "semantic_hash": ""
   },
   "scripts/gen_map.py": {
@@ -462,9 +462,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795046801.0034335,
-    "seen": 1795086669.3269403,
-    "ast_hash": "e830097034f1cf15769edcbde94142c2",
+    "mtime": 1795093388.8595805,
+    "seen": 1795093393.3306332,
+    "ast_hash": "215eb7cf5fc75faf33bf2ecf6d208053",
     "semantic_hash": ""
   },
   "docs/MAP.md": {

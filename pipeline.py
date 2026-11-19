@@ -172,7 +172,7 @@ class Options:
     show_hook: bool = True          # titular arriba los primeros segundos
     language: Optional[str] = None  # None = autodetectar ("es", "en", ...)
     whisper_model: str = "auto"     # auto (según tu equipo) | tiny | base | small | medium | large-v3 | large-v3-turbo
-    use_ai: bool = True             # usar Claude para elegir clips si hay API key
+    use_ai: bool = False            # elegir clips con IA (gasta tokens). Por defecto se eligen gratis en local; la IA entra al pulsar «Optimizar con IA»
     ai_model: str = "claude-sonnet-5-5"
     use_captions: bool = True       # YouTube: elegir los clips con los subtítulos del video (sin bajar nada)
     smart_download: bool = True     # YouTube: bajar solo el audio y luego solo los trozos elegidos
@@ -182,9 +182,9 @@ class Options:
     preset: str = "medium"
     fps: Optional[float] = None     # None = el del original (máx 60)
     loudnorm: bool = True
-    review: bool = True             # Claude revisa cada clip terminado (necesita API key)
+    review: bool = False            # la IA revisa cada clip al terminarlo (gasta tokens; «Optimizar con IA» siempre revisa)
     manual_ranges: list = field(default_factory=list)   # [[inicio, fin], ...] en segundos: el usuario elige los cortes (sin selección de la IA)
-    video_ai: bool = True           # con Gemini: la IA VE el video del clip (imagen + audio) al revisarlo, no solo fotogramas sueltos
+    video_ai: bool = False          # con Gemini: la IA VE el video del clip (imagen + audio) al revisarlo, no solo fotogramas sueltos
     cookies_from_browser: Optional[str] = None  # "chrome", "firefox"... por si YouTube lo pide
     # --- edición para retener al espectador ---
     jumpcuts: bool = True           # quitar silencios y pausas largas
@@ -1909,7 +1909,9 @@ def select_clips(src: Path, tr: dict, opts: Options, title: str, progress: Progr
     if clips and len(clips) < opts.num_clips:
         progress(43.5, f"La IA solo encontró {len(clips)} momento(s) realmente bueno(s): no se rellena con clips flojos.")
     if not clips:
-        if LAST_SELECTION.get("mode") != "basico":
+        if not opts.use_ai and not backend:
+            LAST_SELECTION.update(mode="local", reason="Selección local gratuita (volumen, risas, ganchos y ritmo). La IA solo interviene al pulsar «Optimizar con IA».")
+        elif LAST_SELECTION.get("mode") != "basico":
             LAST_SELECTION.update(mode="basico", reason="La IA no encontró momentos que valgan la pena." if backend else
                                   ("Desactivaste la IA para elegir momentos." if not opts.use_ai else "No hay una IA activa (Ajustes → Inteligencia artificial)."))
         progress(43, "Analizando energía, ganchos y ritmo...")
@@ -3980,7 +3982,7 @@ En "cambios" explica brevemente qué mejoraste."""
         note.insert(0, f"Corte: de {c['start']:.1f}–{c['end']:.1f} s a {ns:.1f}–{ne:.1f} s ({ne - ns:.0f} s en total).")
     out = _set_clip_fields(workdir, index, {"opt_prev": prev, "opt_note": note, "opt_pending": list(r.no_resuelto)[:5] or None, "optimized": True})
     # Se vuelve a revisar el clip ya arreglado: las recomendaciones de abajo se actualizan (si el problema se arregló, desaparece)
-    if o.review and (need_render or rv):
+    if need_render or rv:   # Optimizar siempre vuelve a revisar con la IA, aunque la revisión automática esté apagada
         try:
             progress(96, "La IA vuelve a revisar el clip ya optimizado...")
             c2 = load_clip_for_edit(workdir, index)
