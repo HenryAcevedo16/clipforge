@@ -9,7 +9,7 @@ class OverlapRatioTests(unittest.TestCase):
     def test_merges_overlapping_intervals_without_double_counting(self):
         self.assertAlmostEqual(
             overlap_ratio(0, 10, [(0, 5), (3, 8), (8, 11)]),
-            0.8,
+            1.0,
         )
 
     def test_clips_intervals_to_candidate_and_ignores_invalid_values(self):
