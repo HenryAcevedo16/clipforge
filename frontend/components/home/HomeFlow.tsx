@@ -118,6 +118,9 @@ export function HomeFlow() {
   const [saving, setSaving] = useState(false);
 
   const config = useResource(() => api.getConfig(), []);
+  const selectedAiAvailable = s.aiProvider === "auto"
+    ? !!config.data?.ai_sources?.auto?.ok
+    : !!config.data?.ai_sources?.[s.aiProvider]?.ok;
   const templates = useResource(() => api.listTemplates(), []);
   const tpl: BrandTemplate | undefined = templates.data?.find((t) => t.id === s.templateId) ?? undefined;
 
@@ -243,7 +246,7 @@ export function HomeFlow() {
         complete_ideas: s.completeIdeas,
         video_ai: withAi && s.videoAi,
         snap_silence: s.snapSilence,
-        review: withAi && !!config.data?.ai,
+        review: withAi && selectedAiAvailable,
         layout: s.layout,
         jumpcuts: s.jumpcuts,
         zoom: s.zoom,
@@ -655,7 +658,7 @@ export function HomeFlow() {
               <Switch checked={s.refine} onChange={(v) => setS({ ...s, refine: v })} label="Afinar inicio y final con IA" hint="Solo con «Generar con IA»: una segunda pasada para que el clip empiece y termine justo." />
               <Switch checked={s.completeIdeas} onChange={(v) => setS({ ...s, completeIdeas: v })} label="Terminar siempre la idea" hint="El clip no se corta a mitad de frase: si quien habla sigue explicando, se alarga hasta cerrar la idea (sin pasar del máximo)." />
               <Switch checked={s.snapSilence} onChange={(v) => setS({ ...s, snapSilence: v })} label="Cortar en silencios naturales" hint="Evita cortar a mitad de palabra." />
-              <Switch checked={s.videoAi && !!config.data?.ai} disabled={!config.data?.ai} onChange={(v) => setS({ ...s, videoAi: v })} label="Que la IA vea el video del clip (con audio)" hint="Solo con «Generar con IA». Con Gemini, la revisión mira y escucha el clip entero y no solo unos fotogramas: detecta mejor cortes bruscos, voz que se corta y encuadres raros. Gasta algo más de cupo. Mejor con un modelo Gemini 4." />
+              <Switch checked={s.videoAi && selectedAiAvailable} disabled={!selectedAiAvailable} onChange={(v) => setS({ ...s, videoAi: v })} label="Que la IA vea el video del clip (con audio)" hint="Solo con «Generar con IA». Con Gemini, la revisión mira y escucha el clip entero y no solo unos fotogramas: detecta mejor cortes bruscos, voz que se corta y encuadres raros. Gasta algo más de cupo. Mejor con un modelo Gemini 4." />
             </Card>
 
             {formError && (
@@ -664,7 +667,7 @@ export function HomeFlow() {
               </p>
             )}
 
-            {!config.data?.ai && <p className="text-sm text-ink-3">«Generar con IA» se activa cuando eliges una IA en Ajustes → Inteligencia artificial.</p>}
+            {!selectedAiAvailable && <p className="text-sm text-ink-3">«Generar con IA» se activa cuando la fuente de IA seleccionada para este video esté disponible. Revisa Ajustes → Inteligencia artificial o elige otra fuente.</p>}
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
               <Button variant="ghost" onClick={() => setStep(1)} icon={<ArrowLeft className="size-4" aria-hidden />}>
                 Atrás
@@ -673,7 +676,7 @@ export function HomeFlow() {
                 <Button variant="secondary" onClick={() => submit(false)} loading={sending} className="min-h-12 px-6">
                   Generar sin IA (gratis)
                 </Button>
-                <Button variant="primary" onClick={() => submit(true)} loading={sending} disabled={!config.data?.ai} icon={<Sparkles className="size-4" aria-hidden />} className="min-h-12 px-6">
+                <Button variant="primary" onClick={() => submit(true)} loading={sending} disabled={!selectedAiAvailable} icon={<Sparkles className="size-4" aria-hidden />} className="min-h-12 px-6">
                   Generar con IA
                 </Button>
               </div>
