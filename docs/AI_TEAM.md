@@ -1,42 +1,51 @@
 # Equipo de desarrollo IA de ClipForge
 
-Este repositorio usa cuatro roles especializados. La asignación se hace por tarea y complejidad; no hay que llamar a los cuatro agentes para cada cambio de una línea.
+Usa cuatro agentes con responsabilidades claras. No invoques a todos para una tarea trivial: la delegación debe ahorrar más contexto del que añade.
 
 ## Roles
 
-| Orden | Agente | Modelo | Misión |
+| Orden | Agente | Modelo | Responsabilidad |
 |---|---|---|---|
-| 1 | opus-worker | Opus | Arquitectura, alcance, decisiones y plan de aceptación |
-| 2 | haiku-worker | Haiku | Investigación acotada: símbolos, contratos, logs, docs y pruebas relevantes |
-| 3 | sonnet-worker | Sonnet | Implementación, pruebas dirigidas y correcciones |
-| 4 | sonnet-reviewer | Sonnet | Revisión independiente del diff, pruebas y regresiones |
+| 1 | `opus-worker` | Opus | Arquitectura, criterios de aceptación, riesgos y coordinación |
+| 2 | `haiku-worker` | Haiku | Investigación acotada, contratos, logs y pruebas relevantes |
+| 3 | `sonnet-worker` | Sonnet | Implementación, pruebas dirigidas y correcciones |
+| 4 | `sonnet-reviewer` | Sonnet | Revisión independiente del diff; no implementa |
 
-## Flujo para trabajo no trivial
+## Flujo recomendado
 
-1. **Arquitectura (Opus):** define problema, alcance, criterios de aceptación, riesgos y archivos/sistemas afectados. Para cambios simples o ya especificados, el coordinador puede omitir esta fase.
-2. **Investigación (Haiku):** localiza código, interfaces, pruebas y documentación. Devuelve evidencia archivo:línea y no toma decisiones arquitectónicas.
-3. **Implementación (Sonnet):** realiza el cambio de menor tamaño que cumple el plan y añade pruebas.
-4. **Revisión (Sonnet):** inspecciona el diff de forma independiente; no modifica código. Devuelve hallazgos priorizados.
-5. **Corrección (Sonnet):** resuelve los hallazgos confirmados y vuelve a ejecutar las pruebas afectadas.
-6. **Cierre:** actualizar documentación/estado si corresponde, refrescar Graphify y reportar qué se verificó.
+Para cambios no triviales: Opus define el plan → Haiku recopila evidencia → Sonnet implementa → Sonnet Reviewer revisa → Sonnet corrige hallazgos → verificación y cierre.
 
-## Reglas de delegación y coste
+Para una tarea pequeña, Sonnet puede ejecutarla directamente; usa Haiku para búsquedas mecánicas y Opus solo cuando la ambigüedad o el impacto lo justifiquen.
 
-- No usar un subagente si la llamada cuesta más que leer una salida pequeña directamente.
-- Haiku solo para trabajo mecánico, acotado y fácil de verificar.
-- Sonnet es el implementador predeterminado.
-- Opus se reserva para decisiones ambiguas, cambios multi-sistema, debugging de causa raíz o alto impacto.
-- Sonnet Reviewer revisa cambios normales; Opus puede hacer una revisión adicional si el riesgo es alto o hay implicaciones de arquitectura/seguridad.
-- Limitar respuestas de subagentes a hallazgos, rutas/lineas, decisiones y próximos pasos. No copiar archivos completos al contexto principal.
-- No delegar dos agentes para editar el mismo archivo simultáneamente.
+## Política de modelos
+
+- **Opus:** requisitos ambiguos, arquitectura multi-módulo, causa raíz compleja, cambios irreversibles o decisiones de alto impacto.
+- **Haiku:** localizar símbolos, revisar contratos conocidos, resumir logs, consultar docs concretas, contar/clasificar y otras tareas mecánicas verificables.
+- **Sonnet Developer:** implementación habitual, pruebas, refactors acotados e integración.
+- **Sonnet Reviewer:** revisión independiente de cambios normales y seguridad de código rutinaria. Para un cambio de seguridad/arquitectura de alto riesgo, pedir además revisión de Opus.
+- La revisión es una fase distinta de la implementación. El revisor no edita; devuelve hallazgos con archivo:línea.
+- Limita respuestas de agentes a 30–40 líneas, sin bloques de código ni lecturas completas innecesarias.
+- Nunca delegues dos agentes para editar el mismo archivo simultáneamente.
 
 ## Skills del proyecto
 
 | Skill | Activar cuando |
 |---|---|
-| model-router | Elegir modelo/rol o delegar trabajo |
-| token-optimization | Inicio/cierre de sesión, checkpoint o auditoría de consumo |
-| clipforge-media-pipeline | Descarga, Whisper, selección, timestamps, encuadre, audio, FFmpeg, GPU o directos |
-| clipforge-frontend | Next.js, React, TypeScript, editor, proyectos, UI, accesibilidad o rendimiento |
+| `model-router` | Elegir agente/modelo y delegar |
+| `token-optimization` | Reducir lecturas/contexto, checkpoints y auditoría de coste |
+| `clipforge-media-pipeline` | yt-dlp, Whisper, selección de clips, timestamps, encuadre, audio, FFmpeg, GPU, directos |
+| `clipforge-frontend` | Next.js, React, TypeScript, editor, proyectos, UI, accesibilidad y rendimiento |
 
-Graphify sigue siendo el mapa de relaciones del código. Antes de explorar fuentes, usa las instrucciones vigentes de CLAUDE.md.
+## Skills externas opcionales para frontend
+
+Desde la raíz del repo, se pueden instalar las guías oficiales de Vercel en el ámbito del proyecto:
+
+```bash
+npx skills add vercel-labs/agent-skills --skill react-best-practices -a claude-code
+npx skills add vercel-labs/agent-skills --skill web-design-guidelines -a claude-code
+npx skills add vercel-labs/agent-skills --skill composition-patterns -a claude-code
+```
+
+Son complementarias a `clipforge-frontend`; no reemplazan las reglas específicas de Next.js 16, HeroUI 3 ni el contrato del backend. Instálalas solo cuando vayas a trabajar el frontend.
+
+Graphify sigue siendo el mapa de relaciones del código. Antes de explorar fuentes, usa las instrucciones vigentes de `CLAUDE.md`.
