@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__
+jobs
+models
+frontend
+graphify-out
+web_backup
+dist_skills
+cookies.txt
+config.json
+*.bak
+*.bat

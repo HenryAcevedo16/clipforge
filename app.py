@@ -689,4 +689,4 @@ if __name__ == "__main__":
     print(f"\n  NovoClip listo ->  {url}\n  (deja esta ventana abierta mientras usas la app)\n")
     if not os.environ.get("NOVOCLIP_NO_BROWSER"):
         threading.Timer(1.5, lambda: webbrowser.open(url)).start()
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
+    uvicorn.run(app, host=os.environ.get("NOVOCLIP_HOST", "127.0.0.1"), port=port, log_level="warning")

@@ -1,0 +1,13 @@
+services:
+  novoclip:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"   # solo local; para internet usa un túnel o un proxy con contraseña (la app no tiene login)
+    environment:
+      NOVOCLIP_WORKERS: "1"
+    volumes:
+      - ./jobs:/app/jobs
+      - ./models:/app/models
+      - ./config.json:/app/config.json     # crea antes el archivo: echo {} > config.json
+      - ./cookies.txt:/app/cookies.txt:ro  # opcional; crea antes uno vacío si no tienes
