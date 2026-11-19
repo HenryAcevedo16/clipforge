@@ -4096,10 +4096,9 @@ def delete_clip(workdir: Path, index: int) -> dict:
 # 9. Modo en vivo: graba el directo por trozos y saca clips mientras sigue
 # --------------------------------------------------------------------------- #
 class TwitchChat:
-    """Lee el chat de un canal de Twitch (anónimo, solo lectura) y cuenta los mensajes por segundo.
-    Un pico en el chat suele marcar un buen momento."""
+    """Lee el chat público de Twitch (solo lectura) y detecta picos de actividad."""
 
-    def __init__(self, channel: str, host: str = "irc.chat.twitch.tv", port: int = 6667):
+    def __init__(self, channel: str, host: str = "irc.chat.twitch.tv", port: int = 6697):
         import collections
         self.channel, self.host, self.port = channel.lower().lstrip("#"), host, port
         self.times = collections.deque(maxlen=200000)
@@ -4111,29 +4110,45 @@ class TwitchChat:
     def _run(self) -> None:
         import random
         import socket
+        import ssl
+
+        # Prefer IRC over TLS. Fall back to the legacy plaintext port only
+        # when TLS cannot be reached; neither mode sends account credentials.
+        endpoints = [(6697, True), (6667, False)] if self.port in (6667, 6697) else [(self.port, False)]
         while not self._stop.is_set():
-            try:
-                with socket.create_connection((self.host, self.port), timeout=15) as s:
-                    s.sendall(f"NICK justinfan{random.randint(10000, 99999)}\r\nJOIN #{self.channel}\r\n".encode())
-                    s.settimeout(5)
-                    buf = b""
-                    while not self._stop.is_set():
+            for port, use_tls in endpoints:
+                raw = None
+                try:
+                    raw = socket.create_connection((self.host, port), timeout=15)
+                    conn = ssl.create_default_context().wrap_socket(raw, server_hostname=self.host) if use_tls else raw
+                    with conn as s:
+                        s.sendall(f"NICK justinfan{random.randint(10000, 99999)}\\r\\nJOIN #{self.channel}\\r\\n".encode())
+                        s.settimeout(5)
+                        buf = b""
+                        while not self._stop.is_set():
+                            try:
+                                data = s.recv(4096)
+                            except socket.timeout:
+                                continue
+                            if not data:
+                                break
+                            buf += data
+                            *lines, buf = buf.split(b"\\r\\n")
+                            for ln in lines:
+                                if ln.startswith(b"PING"):
+                                    s.sendall(b"PONG" + ln[4:] + b"\\r\\n")
+                                elif b" PRIVMSG #" in ln:
+                                    self.ok = True
+                                    self.times.append(time.time())
+                    break
+                except Exception:
+                    if raw is not None:
                         try:
-                            data = s.recv(4096)
-                        except socket.timeout:
-                            continue
-                        if not data:
-                            break
-                        buf += data
-                        *lines, buf = buf.split(b"\r\n")
-                        for ln in lines:
-                            if ln.startswith(b"PING"):
-                                s.sendall(b"PONG" + ln[4:] + b"\r\n")
-                            elif b" PRIVMSG #" in ln:
-                                self.ok = True
-                                self.times.append(time.time())
-            except Exception:
-                pass
+                            raw.close()
+                        except OSError:
+                            pass
+            if self._stop.is_set():
+                break
             self._stop.wait(5)
 
     def stop(self) -> None:
