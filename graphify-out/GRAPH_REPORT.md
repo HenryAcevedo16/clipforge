@@ -1,17 +1,17 @@
 # Graph Report - clipforge  (2026-11-19)
 
 ## Corpus Check
-- 84 files · ~76,018 words
+- 84 files · ~76,170 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 10 file(s) not represented in the graph (top: .bat 5, (none) 3, .example 1)
+- Unclassified: 11 file(s) not represented in the graph (top: .bat 6, (none) 3, .example 1)
 
 ## Summary
-- 1016 nodes · 2531 edges · 54 communities (38 shown, 16 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 33 edges (avg confidence: 0.86)
+- 1016 nodes · 2532 edges · 54 communities (38 shown, 16 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 34 edges (avg confidence: 0.86)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `21b22cf7`
+- Built from commit: `26d3b336`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -72,11 +72,13 @@
 5. `Api` - 34 edges
 6. `_render_clip_once()` - 32 edges
 7. `process()` - 32 edges
-8. `process_live()` - 30 edges
-9. `Button()` - 30 edges
+8. `Button()` - 30 edges
+9. `process_live()` - 30 edges
 10. `HomeFlow()` - 28 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `Start here (sesión local nueva)` --references--> `yt_run()`  [INFERRED]
+  docs/STATUS.md → pipeline.py
 - `En la app` --references--> `gemini_key()`  [INFERRED]
   servidor_ia/LEEME.md → pipeline.py
 - `IA incluida o clave propia (nuevo)` --references--> `gemini_key()`  [INFERRED]
@@ -84,8 +86,6 @@
 - `hook()` --indirect_call--> `label()`  [INFERRED]
   pipeline.py → scripts/gen_map.py
 - `_worker()` --uses--> `Options`  [INFERRED]
-  app.py → pipeline.py
-- `_opts()` --calls--> `Options`  [EXTRACTED]
   app.py → pipeline.py
 
 ## Import Cycles
@@ -227,7 +227,7 @@ Nodes (4): Mapa de documentos, Protocolo, Reglas de coste (siempre), Reglas de t
 
 ### Community 35 - "Status"
 Cohesion: 0.33
-Nodes (5): Environment notes, Open questions for the owner, Session log (newest first), Start here (next session), Status
+Nodes (5): Notas de entorno, Preguntas abiertas para el dueño, Session log (newest first), Start here (sesión local nueva), Status
 
 ### Community 37 - "NovoClip · frontend"
 Cohesion: 0.40
@@ -252,7 +252,7 @@ Nodes (10): _avoid_box(), Clip, _cut_clip(), keep_intervals(), player_track(), r
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `gemini_key()` connect `ai_backend` to `pipeline.py`, `NovoClip ✂️ — tu propia app de clipping`?**
-  _High betweenness centrality (0.036) - this node is a cross-community bridge._
+  _High betweenness centrality (0.046) - this node is a cross-community bridge._
 - **Should `app.py` be split into smaller, more focused modules?**
   _Cohesion score 0.12 - nodes in this community are weakly interconnected._
 - **Why does `IA incluida o clave propia (nuevo)` connect `NovoClip ✂️ — tu propia app de clipping` to `ai_backend`?**
