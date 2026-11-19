@@ -213,6 +213,7 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
             <p className="mt-0.5 text-sm text-ink-3">
               Potencial viral · {formatDuration(c.start)}–{formatDuration(c.end)} del video
             </p>
+            {c.reason && <p className="mt-1 text-xs leading-relaxed text-ink-3">{c.reason}</p>}
           </div>
         </div>
         {hookEdit ? (
