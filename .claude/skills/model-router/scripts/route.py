@@ -18,28 +18,49 @@ AGENTS = {
 MECHANICAL = re.compile(
     r"\b(grep|find|search|locate|list|count|rename|reformat|format|convert|"
     r"transcode|extract|parse|deduplicate|dedupe|sort|filter|lint|classify|"
-    r"tag|label|summarize logs|inspect logs|find tests|find callers)\b", re.I
+    r"tag|label|summarize logs|inspect logs|find tests|find callers|"
+    r"buscar|busca|buscando|encuentra|encontrar|localizar|listar|contar|"
+    r"renombrar|reformatear|formatear|convertir|transcodificar|extraer|"
+    r"analizar|parsear|deduplicar|ordenar|filtrar|clasificar|etiquetar|"
+    r"resumir registros|inspeccionar registros|buscar pruebas|buscar referencias)\b", re.I
 )
 HARD = re.compile(
     r"\b(architect|architecture|design|redesign|strategy|plan the|planning|"
     r"trade-?off|root cause|debug across|cross-file|multi-file|refactor the "
     r"(system|codebase)|migrat(e|ion)|concurrency|distributed|race condition|"
     r"orchestrat|ambiguous|underspecified|figure out why|why (is|does|isn't)|"
-    r"live pipeline|cancellation model)\b", re.I
+    r"live pipeline|cancellation model|arquitectura|diseñar|diseño|rediseñar|"
+    r"estrategia|planificar|planificación|compensación|causa raíz|"
+    r"depurar entre archivos|varios archivos|refactorizar el (sistema|código)|"
+    r"migrar|migración|concurrencia|distribuido|condición de carrera|"
+    r"orquestar|ambiguo|poco especificado|averiguar por qué|por qué|"
+    r"pipeline en vivo|modelo de cancelación)\b", re.I
 )
 REVIEW = re.compile(
     r"\b(code[ -]?review|security[ -]?review|review(ing)? (this|the|my|our)\b"
     r"[^.]{0,50}\b(pr|pull request|diff|branch|change|patch|code|commit|file|work)s?"
     r"|review the diff|review the changes|review this diff|security audit|"
-    r"threat ?model|vulnerability assessment)\b", re.I
+    r"threat ?model|vulnerability assessment|revisión de código|"
+    r"revisión de seguridad|auditoría de seguridad|auditar la seguridad|"
+    r"revis(?:ar|a|ando) (?:este|esta|el|la|mi|mis|los|las|un|una)? ?"
+    r"(?:pr|pull request|diff|diferencia|cambios|código|rama|parche|commit|archivo|archivos)|"
+    r"examinar (?:el |la |este |esta )?(?:diff|código|cambios|parche)|"
+    r"revisar el diff|revisar los cambios|revisar este diff|"
+    r"modelo de amenazas|evaluación de vulnerabilidades)\b", re.I
 )
 REVIEW_FOLLOWUP = re.compile(
     r"\b(apply|implement|fix|address|resolve|respond to) (the |these |those |all )?"
-    r"(\w+ )?(review|findings|comments|feedback)\b", re.I
+    r"(\w+ )?(review|findings|comments|feedback)\b|"
+    r"\b(aplicar|implementar|corregir|corrige|arreglar|arregla|solucionar|"
+    r"resolver|resuelve|atender|responder a) (?:la |las |los |el |estos |estas |"
+    r"esos |esas |todos los |todas las )?(?:observaciones|hallazgos|comentarios|"
+    r"revisión|revisiones|feedback)\b", re.I
 )
 HIGH_RISK = re.compile(
     r"\b(security|credential|secret|auth|permission|path traversal|"
-    r"data loss|production migration|irreversible|privacy)\b", re.I
+    r"data loss|production migration|irreversible|privacy|seguridad|"
+    r"credencial|credenciales|secreto|secretos|autenticación|permisos|"
+    r"travesía de ruta|pérdida de datos|migración a producción|privacidad)\b", re.I
 )
 
 
