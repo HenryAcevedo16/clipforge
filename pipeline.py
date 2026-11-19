@@ -38,6 +38,7 @@ warnings.filterwarnings("ignore", module="huggingface_hub")
 
 import cv2
 import numpy as np
+from novoclip_signals import audience_bonus, replay_intervals
 
 ROOT = Path(__file__).resolve().parent
 FONTS_DIR = ROOT / "fonts"
@@ -733,6 +734,20 @@ def download(url: str, workdir: Path, opts: Options, progress: ProgressFn = _noo
     if not done:
         raise RuntimeError("La descarga no terminó. Revisa tu conexión o actualiza yt-dlp (pip install -U yt-dlp).")
     src = max(done, key=lambda p: p.stat().st_size)
+    if audio_only or stem == "source":
+        heatmap = []
+        for point in info.get("heatmap") or []:
+            try:
+                heatmap.append({
+                    "start_time": float(point["start_time"]),
+                    "end_time": float(point["end_time"]),
+                    "value": float(point["value"]),
+                })
+            except (KeyError, TypeError, ValueError):
+                continue
+        (workdir / "audience.json").write_text(
+            json.dumps({"youtube_heatmap": heatmap}, ensure_ascii=False), encoding="utf-8"
+        )
     return src, title
 
 
@@ -1070,6 +1085,20 @@ def _auto_keywords(text: str, n: int = 6) -> list[str]:
     return out[:n]
 
 
+def _attach_replay_signals(tr: dict, workdir: Path, captions: Optional[dict] = None) -> None:
+    """Attach YouTube replay intervals when yt-dlp supplied a usable heatmap."""
+    heatmap = (captions or {}).get("heatmap") or []
+    if not heatmap:
+        path = workdir / "audience.json"
+        try:
+            heatmap = json.loads(path.read_text(encoding="utf-8")).get("youtube_heatmap") or []
+        except (OSError, ValueError, AttributeError):
+            heatmap = []
+    intervals = replay_intervals(heatmap)
+    if intervals:
+        tr["replay"] = intervals
+
+
 def select_heuristic(src: Path, tr: dict, opts: Options) -> list[Clip]:
     lines = sentence_lines(tr)
     if not lines:
@@ -1089,6 +1118,12 @@ def select_heuristic(src: Path, tr: dict, opts: Options) -> list[Clip]:
                 break
             if d >= opts.min_len:
                 sc, why = _window_score(lines, feats, i, j, rate_mu, target)
+                audience, audience_reasons = audience_bonus(
+                    lines[i]["s"], lines[j]["e"], tr.get("hot") or [], tr.get("replay") or []
+                )
+                sc += audience
+                if audience_reasons:
+                    why = ", ".join(([why] if why else []) + audience_reasons)
                 scored.append((sc, i, j, why))
     if not scored:  # video corto: usar todo
         scored = [(0.0, 0, len(lines) - 1, "video completo")]
@@ -1560,14 +1595,18 @@ def select_ai(tr: dict, opts: Options, video_title: str = "", src: Optional[Path
     lines = sentence_lines(tr)
     energy = _line_energy(lines, _loudness_curve(src)) if src else [0.0] * len(lines)
     hot = tr.get("hot") or []
+    replay = tr.get("replay") or []
 
     def tag(e, l=None):
         fire = " 🔥" if l is not None and any(a <= l["e"] and l["s"] <= b for a, b in hot) else ""
-        return (" ⚡" if e > 1.2 else "") + fire
+        repeat = " ↻" if l is not None and any(a <= l["e"] and l["s"] <= b for a, b in replay) else ""
+        return (" ⚡" if e > 1.2 else "") + fire + repeat
     listing = "\n".join(f"{k} [{l['s']:.1f}-{l['e']:.1f}]{tag(e, l)} {l['text']}"
                         for k, (l, e) in enumerate(zip(lines, energy)))
     if hot:
         listing += "\n(🔥 = en ese momento el chat del directo se disparó: suele ser un momento que gustó al público)"
+    if replay:
+        listing += "\n(↻ = este tramo aparece entre los más repetidos por la audiencia en YouTube)"
     want = opts.num_clips
     ask_n = min(max(want * 2, want + 3), 24)    # se piden más candidatos y se queda con los mejores: elegir entre más da mejores clips
     prompt = f"""Eres el mejor editor de clips virales de TikTok, YouTube Shorts e Instagram Reels.
@@ -1594,7 +1633,8 @@ Elige los MEJORES clips: devuelve entre {want} y {ask_n} candidatos (los mejores
    (hasta el máximo): es preferible un clip largo y completo a uno corto que se corta a mitad de idea.
    Si la idea no cabe completa en el máximo, empieza más tarde (en otro gancho) en vez de cortar el final.
 4. EMOCIÓN Y VALOR: humor, sorpresa, polémica, confesiones, consejos concretos, historias personales, datos.
-   Las frases con ⚡ suelen ser buenos momentos.
+   Las frases con ⚡ suelen ser buenos momentos. Prioriza con prudencia los tramos con 🔥 (reacción del chat)
+   o ↻ (repeticiones de YouTube): son señales de interés, no una garantía de que el fragmento tenga sentido.
 5. DESCARTA: intro, despedidas, patrocinios, "suscríbete", partes técnicas aburridas, silencios, repeticiones.
 6. VARIEDAD: cada clip sobre un tema o momento distinto.
 
@@ -3332,9 +3372,19 @@ def fetch_captions(url: str, opts: Options) -> Optional[dict]:
                 continue
             if len(words) < 30:
                 continue
+            heatmap = []
+            for point in info.get("heatmap") or []:
+                try:
+                    heatmap.append({
+                        "start_time": float(point["start_time"]),
+                        "end_time": float(point["end_time"]),
+                        "value": float(point["value"]),
+                    })
+                except (KeyError, TypeError, ValueError):
+                    continue
             return {"language": key.split("-")[0], "segments": _group_words(words), "approx": True,
                     "title": info.get("title") or "video", "duration": float(info.get("duration") or 0),
-                    "source": f"subtítulos {kind} de YouTube ({key})"}
+                    "heatmap": heatmap, "source": f"subtítulos {kind} de YouTube ({key})"}
     return None
 
 
@@ -3536,6 +3586,9 @@ def process(source: str, workdir: Path, opts: Options, progress: ProgressFn = _n
         clips = manual_clips(tr, manual, opts, title)
     else:
         tr = caps if caps else transcribe(listen, workdir, opts, progress)
+        _attach_replay_signals(tr, workdir, caps)
+        if tr.get("replay"):
+            progress(42.5, f"YouTube aporta {len(tr['replay'])} tramo(s) repetido(s) por la audiencia; se tendrán en cuenta al ordenar los clips.")
         clips = select_clips(listen, tr, opts, title, progress)
     if not clips:
         raise RuntimeError("No se encontraron segmentos con voz para recortar.")
@@ -4043,10 +4096,9 @@ def delete_clip(workdir: Path, index: int) -> dict:
 # 9. Modo en vivo: graba el directo por trozos y saca clips mientras sigue
 # --------------------------------------------------------------------------- #
 class TwitchChat:
-    """Lee el chat de un canal de Twitch (anónimo, solo lectura) y cuenta los mensajes por segundo.
-    Un pico en el chat suele marcar un buen momento."""
+    """Lee el chat público de Twitch (solo lectura) y detecta picos de actividad."""
 
-    def __init__(self, channel: str, host: str = "irc.chat.twitch.tv", port: int = 6667):
+    def __init__(self, channel: str, host: str = "irc.chat.twitch.tv", port: int = 6697):
         import collections
         self.channel, self.host, self.port = channel.lower().lstrip("#"), host, port
         self.times = collections.deque(maxlen=200000)
@@ -4058,29 +4110,45 @@ class TwitchChat:
     def _run(self) -> None:
         import random
         import socket
+        import ssl
+
+        # Prefer IRC over TLS. Fall back to the legacy plaintext port only
+        # when TLS cannot be reached; neither mode sends account credentials.
+        endpoints = [(6697, True), (6667, False)] if self.port in (6667, 6697) else [(self.port, False)]
         while not self._stop.is_set():
-            try:
-                with socket.create_connection((self.host, self.port), timeout=15) as s:
-                    s.sendall(f"NICK justinfan{random.randint(10000, 99999)}\r\nJOIN #{self.channel}\r\n".encode())
-                    s.settimeout(5)
-                    buf = b""
-                    while not self._stop.is_set():
+            for port, use_tls in endpoints:
+                raw = None
+                try:
+                    raw = socket.create_connection((self.host, port), timeout=15)
+                    conn = ssl.create_default_context().wrap_socket(raw, server_hostname=self.host) if use_tls else raw
+                    with conn as s:
+                        s.sendall(f"NICK justinfan{random.randint(10000, 99999)}\r\nJOIN #{self.channel}\r\n".encode())
+                        s.settimeout(5)
+                        buf = b""
+                        while not self._stop.is_set():
+                            try:
+                                data = s.recv(4096)
+                            except socket.timeout:
+                                continue
+                            if not data:
+                                break
+                            buf += data
+                            *lines, buf = buf.split(b"\r\n")
+                            for ln in lines:
+                                if ln.startswith(b"PING"):
+                                    s.sendall(b"PONG" + ln[4:] + b"\r\n")
+                                elif b" PRIVMSG #" in ln:
+                                    self.ok = True
+                                    self.times.append(time.time())
+                    break
+                except Exception:
+                    if raw is not None:
                         try:
-                            data = s.recv(4096)
-                        except socket.timeout:
-                            continue
-                        if not data:
-                            break
-                        buf += data
-                        *lines, buf = buf.split(b"\r\n")
-                        for ln in lines:
-                            if ln.startswith(b"PING"):
-                                s.sendall(b"PONG" + ln[4:] + b"\r\n")
-                            elif b" PRIVMSG #" in ln:
-                                self.ok = True
-                                self.times.append(time.time())
-            except Exception:
-                pass
+                            raw.close()
+                        except OSError:
+                            pass
+            if self._stop.is_set():
+                break
             self._stop.wait(5)
 
     def stop(self) -> None:
