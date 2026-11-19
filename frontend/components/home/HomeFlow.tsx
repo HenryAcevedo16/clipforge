@@ -118,9 +118,10 @@ export function HomeFlow() {
   const [saving, setSaving] = useState(false);
 
   const config = useResource(() => api.getConfig(), []);
-  const selectedAiAvailable = s.aiProvider === "auto"
-    ? !!config.data?.ai_sources?.auto?.ok
-    : !!config.data?.ai_sources?.[s.aiProvider]?.ok;
+  const effectiveAiProvider: AiSource = s.aiProvider === "auto"
+    ? config.data?.ai_source ?? "auto"
+    : s.aiProvider;
+  const selectedAiAvailable = !!config.data?.ai_sources?.[effectiveAiProvider]?.ok;
   const templates = useResource(() => api.listTemplates(), []);
   const tpl: BrandTemplate | undefined = templates.data?.find((t) => t.id === s.templateId) ?? undefined;
 
