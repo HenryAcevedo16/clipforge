@@ -605,7 +605,13 @@ def _cookie_opts(method: Optional[str]) -> dict:
         return {}
     if method == "file":
         f = _find_cookies_file()
-        return {"cookiefile": str(f)} if f else {}
+        if not f:
+            return {}
+        # yt-dlp reescribe el archivo al cerrar y borra lo que YouTube invalida: trabaja con una copia
+        import tempfile
+        tmp = Path(tempfile.gettempdir()) / "novoclip_cookies.txt"
+        shutil.copyfile(f, tmp)
+        return {"cookiefile": str(tmp)}
     if method.startswith("client:"):
         return {"extractor_args": {"youtube": {"player_client": [method.split(":", 1)[1]]}}}
     return {"cookiesfrombrowser": (method,)}
