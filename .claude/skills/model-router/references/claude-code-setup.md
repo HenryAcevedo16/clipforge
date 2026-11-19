@@ -1,57 +1,47 @@
-# Claude Code setup
+# Claude Code setup — ClipForge
 
-In Claude Code you don't write a dispatcher — the orchestrator model *is* the dispatcher. It reads each subagent's `description` and delegates to the best match. So installing this "router" means: install four model-pinned worker subagents with sharp descriptions, run the orchestrator on a capable model, and give it the routing policy.
+## Agent files
 
-## 1. Install the worker subagents
+These project agents live in `.claude/agents/`:
 
-Copy the four files from `assets/agents/` into one of:
+- `opus-worker.md`: architect and coordinator (Opus)
+- `haiku-worker.md`: investigator (Haiku)
+- `sonnet-worker.md`: implementer (Sonnet)
+- `sonnet-reviewer.md`: independent reviewer (Sonnet)
 
-- `.claude/agents/` — project scope (highest priority, checked into the repo)
-- `~/.claude/agents/` — user scope (applies across your projects)
+Claude Code loads project agents from this directory. If you create a new agent file while Claude Code is running, restart the session if it does not appear in the agent list.
 
-```bash
-mkdir -p .claude/agents
-cp assets/agents/*.md .claude/agents/
-```
+## Recommended session model
 
-Each file sets its tier with an alias in the `model` field: `haiku`, `sonnet`, `opus` or `fable`. Each alias resolves to the newest model in its family, so the files need no edit when a model changes. Pin a full model ID only where you need a fixed version.
-
-**Restart gotcha:** file-based subagents load at session start. After adding the *first* agent file to a new `agents/` directory, restart Claude Code so the watcher picks up the directory. Edits to existing files are detected within a few seconds without a restart; agents created via the `/agents` interface take effect immediately.
-
-## 2. Run the orchestrator on Opus
-
-The dispatcher's judgment is the highest-leverage decision, so don't cheap out on it:
+For non-trivial tasks that need coordination, start Claude Code with Opus as the main coordinator:
 
 ```bash
 claude --model opus
 ```
 
-## 3. Give the orchestrator the policy
+In Claude Code Desktop, select Opus for the coordinating session. The subagents retain their own `model` values from frontmatter. If you choose Sonnet as the main session model, Sonnet can still invoke the model-pinned agents when available, but Opus is no longer the main dispatcher.
 
-Put the decision procedure where the orchestrator will see it — a `CLAUDE.md` at the repo root is the natural home. Minimum viable version:
+## Delegation workflow
 
-```markdown
-## Delegation policy
-Default to sonnet-worker. Use haiku-worker only for mechanical, fully-specified,
-verifiable tasks. Escalate to opus-worker when a task is ambiguous, spans many
-files/systems, is irreversible/high-risk, or a cheaper tier already failed.
-Use fable-worker only for frontier-difficulty work or the bio/cyber/LLM-R&D
-domains. Route down, escalate on evidence.
-```
+1. Opus defines the implementation plan and acceptance criteria.
+2. Haiku researches bounded questions and returns references, not broad source dumps.
+3. Sonnet implements and runs focused tests.
+4. Sonnet Reviewer reads the diff independently and reports findings; it must not edit.
+5. Sonnet addresses confirmed findings and reruns tests.
+6. Opus is called again only when architecture, risk or unresolved trade-offs require it.
 
-The orchestrator now matches each incoming task against the four descriptions and this policy, and delegates. That's the whole router.
+For a trivial, well-scoped change, Sonnet may work directly without spawning all roles.
 
-## 4. Optional: default model for `inherit` agents
+## Verify model availability
 
-Any subagent without a `model` field inherits the main conversation's model. To set a cheaper floor for those:
+Agent frontmatter requests a model alias; it does not bypass plan, organization, or account availability. Confirm that the agent/model is actually available in the current Claude Code session. If an agent unexpectedly inherits the main model, inspect its selected model in Claude Code before assuming routing worked.
+
+## Local verification
+
+From the repository root:
 
 ```bash
-export CLAUDE_CODE_SUBAGENT_MODEL="<the Sonnet api ID from the MODELS table in scripts/route.py>"
+python3 .claude/skills/model-router/scripts/route.py "find the function that parses timestamps" --files 1
+python3 .claude/skills/model-router/scripts/route.py "design a safer live chunk processing architecture" --files 8
+python3 .claude/skills/model-router/scripts/route.py "review the frontend diff" --files 2
 ```
-
-## Caveats
-
-- **`availableModels` allowlist wins.** Claude Code checks env var, per-invocation param, and frontmatter against your org's allowlist, and **silently skips** a value that resolves to an excluded model, running the subagent on the inherited model instead. If `fable-worker` quietly runs as something else, the allowlist is the first place to look — not your config.
-- **Fable may be gated.** Fable/Mythos-tier access depends on plan and org policy. If it's not enabled, the Fable subagent falls back per the rule above.
-- **The `fable` alias can resolve to an older Fable.** In a Claude apps gateway session, `fable` resolves to Fable 5. The `ANTHROPIC_DEFAULT_FABLE_MODEL` environment variable also changes the target. Set `model` to a full ID in the Fable worker if you need one fixed version.
-- **Extended thinking inherits.** Recent Claude Code versions have subagents inherit the main session's thinking configuration. If you want a worker to reason harder or less, set its `effort` field explicitly rather than relying on inheritance.
