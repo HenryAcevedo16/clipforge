@@ -621,8 +621,14 @@ def yt_run(ydl_opts: dict, opts: Options, fn: Callable, progress: ProgressFn = _
     import yt_dlp
     methods = _cookie_methods(opts)
     first_err: Optional[BaseException] = None
+    base = dict(ydl_opts)
+    # YouTube exige un motor de JavaScript (Deno o Node) para resolver su desafío; sin él casi todo da "no eres un robot"
+    rt = "deno" if shutil.which("deno") else "node" if shutil.which("node") else None
+    if rt and "js_runtimes" not in base:
+        base["js_runtimes"] = {rt: {}}
+    base.setdefault("remote_components", ["ejs:github"])   # baja el resolutor del desafío si no viene instalado
     for k, m in enumerate(methods):
-        o = dict(ydl_opts, **_cookie_opts(m))
+        o = dict(base, **_cookie_opts(m))
         try:
             with yt_dlp.YoutubeDL(o) as ydl:
                 res = fn(ydl)
@@ -651,7 +657,8 @@ def yt_run(ydl_opts: dict, opts: Options, fn: Callable, progress: ProgressFn = _
         f"  1) LO MÁS SEGURO: exporta tus cookies con la extensión «Get cookies.txt LOCALLY» estando en youtube.com con tu sesión iniciada "
         f"y guarda el archivo como  {COOKIES_FILE.name}  dentro de la carpeta de NovoClip (Chrome/Edge en Windows no dejan leer sus cookies solos).\n"
         "  2) O descarga el video por otro medio y súbelo a NovoClip como archivo.\n"
-        "  3) Actualiza el descargador:  .venv\\Scripts\\pip install -U \"yt-dlp[default]\"") from first_err
+        + ("" if rt else "  *) FALTA el motor de JavaScript que YouTube exige: instala Deno con  winget install DenoLand.Deno  y reinicia la app.\n")
+        + "  3) Actualiza el descargador:  .venv\\Scripts\\pip install -U \"yt-dlp[default]\"") from first_err
 
 
 def download(url: str, workdir: Path, opts: Options, progress: ProgressFn = _noop,

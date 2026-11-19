@@ -1,7 +1,7 @@
 # Graph Report - clipforge  (2026-11-19)
 
 ## Corpus Check
-- 84 files · ~75,932 words
+- 84 files · ~76,018 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 10 file(s) not represented in the graph (top: .bat 5, (none) 3, .example 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `54d2c35d`
+- Built from commit: `21b22cf7`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -44,7 +44,7 @@
 - server.py
 - ClipEditor.tsx
 - layout.tsx
-- process
+- ask_claude
 - guard_read.py
 - work
 - process_live
@@ -98,8 +98,8 @@ Cohesion: 0.12
 Nodes (11): _anunciar_version(), api_version(), classic(), clip_for_edit(), get_file(), get_job(), get_zip(), index() (+3 more)
 
 ### Community 1 - "pipeline.py"
-Cohesion: 0.07
-Nodes (26): analyze_framing(), apply_zoom(), _ass_color(), _blur_bg(), build_ass(), _cam_panel(), _clean_word(), _cluster_people() (+18 more)
+Cohesion: 0.06
+Nodes (27): analyze_framing(), apply_zoom(), _ass_color(), _blur_bg(), build_ass(), _cam_panel(), _clean_word(), _cluster_people() (+19 more)
 
 ### Community 2 - "ai_backend"
 Cohesion: 0.07
@@ -122,12 +122,12 @@ Cohesion: 0.05
 Nodes (42): Actualizar en Windows, Ajuste automático según el equipo (nuevo), Archivos, 📷 Calidad de la webcam del streamer, 🎯 Clips con más sentido y notas más justas, Clips de directo editables, 🎯 Clips que terminan la idea, Consejos (+34 more)
 
 ### Community 7 - "Path"
-Cohesion: 0.11
-Nodes (18): delete_clip(), _filter_path(), _group_words(), _job_info(), _live_src(), load_clip_for_edit(), _local_video(), norm_provider() (+10 more)
+Cohesion: 0.10
+Nodes (20): _all_words(), delete_clip(), _filter_path(), _group_words(), _job_info(), _live_src(), load_clip_for_edit(), _local_video() (+12 more)
 
 ### Community 8 - "progress"
-Cohesion: 0.14
-Nodes (16): Cancelled, check_cancel(), _cookie_methods(), download(), hook(), _ggml_model(), _is_bot_check(), preview_framing() (+8 more)
+Cohesion: 0.11
+Nodes (23): align_clip(), Cancelled, check_cancel(), describe_device(), download(), hook(), _ggml_model(), _is_bot_check() (+15 more)
 
 ### Community 9 - "types.ts"
 Cohesion: 0.09
@@ -146,8 +146,8 @@ Cohesion: 0.15
 Nodes (22): ResultStep(), ResultThumb(), ClipCard(), clipText(), GRAV, isReview(), ReviewPanel(), TIPO (+14 more)
 
 ### Community 14 - "Options"
-Cohesion: 0.09
-Nodes (25): ask_claude(), _ask_proxy(), _auto_keywords(), classify_video(), complete_endings(), extend_to_sentence_end(), _extract_json(), _grab_jpeg() (+17 more)
+Cohesion: 0.12
+Nodes (18): _auto_keywords(), complete_endings(), _cookie_methods(), extend_to_sentence_end(), _line_energy(), _line_features(), _loudness_curve(), manual_clips() (+10 more)
 
 ### Community 15 - "BrandKit.tsx"
 Cohesion: 0.11
@@ -201,9 +201,9 @@ Nodes (12): FramingPreview(), ClipEditor(), LAYOUTS, norm(), sec(), STYLE_LABEL,
 Cohesion: 0.24
 Nodes (9): metadata, RootLayout(), viewport, AppShell(), isActive(), NAV, LogoMark(), MockSwitcher() (+1 more)
 
-### Community 28 - "process"
-Cohesion: 0.12
-Nodes (12): align_clip(), _all_words(), describe_device(), _frames_b64(), low_res_warning(), parse_ranges(), probe(), process() (+4 more)
+### Community 28 - "ask_claude"
+Cohesion: 0.21
+Nodes (8): ask_claude(), _ask_proxy(), classify_video(), _extract_json(), _grab_jpeg(), _included_cfg(), locate_player(), _proxy_url()
 
 ### Community 29 - "guard_read.py"
 Cohesion: 0.27
@@ -214,8 +214,8 @@ Cohesion: 0.23
 Nodes (9): _cleanup_partial(), work(), work(), work(), _edit_gate(), _worker(), progress(), begin_job() (+1 more)
 
 ### Community 31 - "process_live"
-Cohesion: 0.09
-Nodes (17): _add_nvidia_dll_dirs(), _clip_video_bytes(), _encoder_test(), _fmt_clock(), hw_info(), _kill_tree(), _live_keep_source(), process_live() (+9 more)
+Cohesion: 0.08
+Nodes (18): _add_nvidia_dll_dirs(), _clip_video_bytes(), _encoder_test(), _fmt_clock(), _frames_b64(), hw_info(), _kill_tree(), _live_keep_source() (+10 more)
 
 ### Community 32 - "_job_dir"
 Cohesion: 0.18
@@ -258,7 +258,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `IA incluida o clave propia (nuevo)` connect `NovoClip ✂️ — tu propia app de clipping` to `ai_backend`?**
   _High betweenness centrality (0.033) - this node is a cross-community bridge._
 - **Should `pipeline.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.06845513413506013 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06462585034013606 - nodes in this community are weakly interconnected._
 - **Should `ai_backend` be split into smaller, more focused modules?**
   _Cohesion score 0.06717687074829932 - nodes in this community are weakly interconnected._
 - **Should `Code map` be split into smaller, more focused modules?**
