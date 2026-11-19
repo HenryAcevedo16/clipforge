@@ -43,6 +43,26 @@ class RouteTests(unittest.TestCase):
     def test_failed_review_escalates_to_opus(self):
         result = ROUTER.route("review this diff", files_touched=2, prior_failures=1)
         self.assertEqual(result["agent"], "opus-worker")
+    
+    def test_spanish_mechanical_lookup_goes_to_haiku(self):
+        result = ROUTER.route("buscar la función de timestamps", files_touched=1)
+        self.assertEqual(result["agent"], "haiku-worker")
+
+    def test_spanish_architecture_goes_to_opus(self):
+        result = ROUTER.route("diseñar la arquitectura del pipeline", files_touched=2)
+        self.assertEqual(result["agent"], "opus-worker")
+
+    def test_spanish_diff_review_goes_to_reviewer(self):
+        result = ROUTER.route("revisar este diff", files_touched=2)
+        self.assertEqual(result["agent"], "sonnet-reviewer")
+
+    def test_spanish_security_review_escalates_to_opus(self):
+        result = ROUTER.route("revisión de seguridad de credenciales", files_touched=2)
+        self.assertEqual(result["agent"], "opus-worker")
+
+    def test_spanish_review_followup_is_implementation(self):
+        result = ROUTER.route("corrige los hallazgos de la revisión", files_touched=2)
+        self.assertEqual(result["agent"], "sonnet-worker")
 
 
 if __name__ == "__main__":
