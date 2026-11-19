@@ -51,6 +51,7 @@ graphify-out/.graphify_*
 
 # Cookies de YouTube (sesión personal: nunca subir)
 cookies.txt
+*cookies*.txt
 
 # Informe de la prueba de YouTube
 diagnostico_youtube.txt

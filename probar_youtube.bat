@@ -3,7 +3,7 @@ cd /d "%~dp0"
 echo === Prueba de YouTube para NovoClip ===
 set /p URL=Pega el enlace de YouTube y pulsa Enter: 
 set OPCOOK=
-if exist cookies.txt (set OPCOOK=--cookies cookies.txt & echo [usando cookies.txt]) else (echo [no hay cookies.txt en esta carpeta])
+if exist cookies.txt (set OPCOOK=--cookies cookies.txt & echo [usando cookies.txt]) else if exist "%USERPROFILE%\Downloads\www.youtube.com_cookies.txt" (set OPCOOK=--cookies "%USERPROFILE%\Downloads\www.youtube.com_cookies.txt" & echo [usando Descargas\www.youtube.com_cookies.txt]) else (echo [no hay cookies.txt en esta carpeta])
 where deno >nul 2>nul && (echo [Deno: si]) || (echo [Deno: NO se encuentra - cierra esta ventana y abre una nueva])
 echo.
 .venv\Scripts\python -m yt_dlp -v %OPCOOK% -F "%URL%" > diagnostico_youtube.txt 2>&1

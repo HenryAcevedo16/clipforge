@@ -574,6 +574,22 @@ def describe_device(opts: Options) -> str:
 # Cookies de YouTube: "Sign in to confirm you're not a bot"
 # --------------------------------------------------------------------------- #
 COOKIES_FILE = ROOT / "cookies.txt"          # exportado del navegador (formato Netscape); opcional
+
+
+def _find_cookies_file() -> Optional[Path]:
+    """cookies.txt en la carpeta; si no, el que deja la extensión (www.youtube.com_cookies.txt) aquí o en Descargas."""
+    if COOKIES_FILE.is_file():
+        return COOKIES_FILE
+    found = []
+    for d in (ROOT, Path.home() / "Downloads", Path.home() / "Descargas"):
+        try:
+            found += [p for p in d.glob("*cookies*.txt")
+                      if p.is_file() and (d == ROOT or "youtube" in p.name.lower())]
+        except OSError:
+            pass
+    return max(found, key=lambda p: p.stat().st_mtime) if found else None
+
+
 COOKIE_BROWSERS = ("firefox", "edge", "chrome", "brave", "opera", "vivaldi")
 YT_CLIENTS = ("tv", "web_safari", "mweb", "android_vr", "tv_simply")   # otras "puertas" de YouTube que a veces no piden iniciar sesión
 
@@ -588,7 +604,8 @@ def _cookie_opts(method: Optional[str]) -> dict:
     if not method:
         return {}
     if method == "file":
-        return {"cookiefile": str(COOKIES_FILE)}
+        f = _find_cookies_file()
+        return {"cookiefile": str(f)} if f else {}
     if method.startswith("client:"):
         return {"extractor_args": {"youtube": {"player_client": [method.split(":", 1)[1]]}}}
     return {"cookiesfrombrowser": (method,)}
@@ -600,7 +617,7 @@ def _cookie_methods(opts: Options) -> list:
     remembered = load_config().get("yt_cookies")
     if remembered:
         first.insert(0, remembered)
-    rest = ([None] + (["file"] if COOKIES_FILE.is_file() else []) + ["client:" + c for c in YT_CLIENTS]
+    rest = ([None] + (["file"] if _find_cookies_file() else []) + ["client:" + c for c in YT_CLIENTS]
             + list(COOKIE_BROWSERS))
     out: list = []
     for m in first + rest:
