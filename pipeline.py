@@ -3094,11 +3094,19 @@ def _render_clip_once(src: Path, clip: Clip, tr: dict, opts: Options, outdir: Pa
             if k % 30 == 0:
                 progress(p0 + (p1 - p0) * (0.3 + 0.68 * k / total), f"Clip {clip.index}: renderizando {k}/{total} frames")
     except (Cancelled, BrokenPipeError, OSError) as exc:
-        _kill_tree(proc)
-        check_cancel()   # si fue por cancelar, sale como "cancelado" y no como error
         if isinstance(exc, Cancelled):
+            _kill_tree(proc)
             raise
-        broken = exc     # ffmpeg se cerró solo: abajo se lee su mensaje de error para explicar por qué
+        check_cancel()   # si fue por cancelar, sale como "cancelado" y no como error
+        broken = exc     # ffmpeg cerró la entrada: puede haber TERMINADO bien (ya tenía todo el audio/duración) o haber fallado
+        try:             # se le deja acabar de escribir el archivo; matarlo aquí borraba su mensaje y a veces el clip bueno
+            proc.stdin.close()
+        except Exception:
+            pass
+        try:
+            proc.wait(timeout=90)
+        except Exception:
+            _kill_tree(proc)
     finally:
         cap.release()
         if _CANCEL.get(threading.get_ident()) is not None and _CANCEL[threading.get_ident()].is_set():
@@ -3119,9 +3127,14 @@ def _render_clip_once(src: Path, clip: Clip, tr: dict, opts: Options, outdir: Pa
     except Cancelled:
         final.unlink(missing_ok=True)   # no dejar un clip a medias
         raise
+    if broken is not None and proc.returncode == 0 and final.exists() and final.stat().st_size > 2048:
+        broken = None    # ffmpeg ya había terminado el clip (cortó por duración/audio) y solo cerró la tubería antes de tiempo
     if broken is not None:
         final.unlink(missing_ok=True)
-        raise RuntimeError(f"ffmpeg se cerró de golpe en el clip {clip.index} ({type(broken).__name__}): {err[-1500:].strip() or 'sin mensaje'}")
+        rc = proc.returncode
+        rc_txt = f"código {rc & 0xFFFFFFFF:#x}" if isinstance(rc, int) else "código ?"
+        raise RuntimeError(f"ffmpeg se cerró de golpe en el clip {clip.index} ({type(broken).__name__}, {rc_txt}): "
+                           f"{err[-1500:].strip() or 'sin mensaje'}\nComando: {' '.join(str(x) for x in cmd)[:900]}")
     if proc.returncode != 0:
         raise RuntimeError(f"ffmpeg falló en el clip {clip.index}: {err[-1500:]}")
 
