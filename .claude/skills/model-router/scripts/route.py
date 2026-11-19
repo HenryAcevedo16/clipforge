@@ -56,8 +56,12 @@ def route(
     is_review = bool(REVIEW.search(text)) and not REVIEW_FOLLOWUP.search(text)
 
     if is_review:
-        tier = "review"
-        reasons.append("independent diff review -> Sonnet Reviewer")
+        if irreversible or files_touched >= 6 or HIGH_RISK.search(text):
+            tier = "opus"
+            reasons.append("high-risk review -> Opus Architect assessment")
+        else:
+            tier = "review"
+            reasons.append("independent diff review -> Sonnet Reviewer")
     else:
         tier = "sonnet"
         reasons.append("default implementation -> Sonnet Developer")
@@ -77,10 +81,10 @@ def route(
             reasons.append("high-impact or sensitive change -> Opus assessment")
 
     if prior_failures > 0:
-        if tier in ("haiku", "review"):
+        if tier == "haiku":
             tier = "sonnet"
-            reasons.append("escalated to Sonnet after a failed lower-cost attempt")
-        elif tier == "sonnet":
+            reasons.append("escalated to Sonnet after a failed Haiku attempt")
+        elif tier in ("sonnet", "review"):
             tier = "opus"
             reasons.append("escalated to Opus after a failed Sonnet attempt")
 
