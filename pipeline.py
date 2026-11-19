@@ -4122,7 +4122,7 @@ class TwitchChat:
                     raw = socket.create_connection((self.host, port), timeout=15)
                     conn = ssl.create_default_context().wrap_socket(raw, server_hostname=self.host) if use_tls else raw
                     with conn as s:
-                        s.sendall(f"NICK justinfan{random.randint(10000, 99999)}\\r\\nJOIN #{self.channel}\\r\\n".encode())
+                        s.sendall(f"NICK justinfan{random.randint(10000, 99999)}\r\nJOIN #{self.channel}\r\n".encode())
                         s.settimeout(5)
                         buf = b""
                         while not self._stop.is_set():
@@ -4133,10 +4133,10 @@ class TwitchChat:
                             if not data:
                                 break
                             buf += data
-                            *lines, buf = buf.split(b"\\r\\n")
+                            *lines, buf = buf.split(b"\r\n")
                             for ln in lines:
                                 if ln.startswith(b"PING"):
-                                    s.sendall(b"PONG" + ln[4:] + b"\\r\\n")
+                                    s.sendall(b"PONG" + ln[4:] + b"\r\n")
                                 elif b" PRIVMSG #" in ln:
                                     self.ok = True
                                     self.times.append(time.time())
