@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "frontend/components/home/HomeFlow.tsx": {
-    "mtime": 1795093326.3101602,
-    "seen": 1795093393.3305538,
-    "ast_hash": "8638f95f4756010bce403bf0c3b068ec",
+    "mtime": 1795093819.8395429,
+    "seen": 1795093922.0201232,
+    "ast_hash": "7677c5fcff368b2210083901abc6d816",
     "semantic_hash": ""
   },
   "frontend/components/home/RecentProjects.tsx": {
@@ -126,8 +126,8 @@
     "semantic_hash": ""
   },
   "frontend/components/projects/ClipCard.tsx": {
-    "mtime": 1795093331.5378835,
-    "seen": 1795093393.3305593,
+    "mtime": 1795093397.6832533,
+    "seen": 1795093922.0201309,
     "ast_hash": "e29bfb2e6ac57a1d0f58f78d3346f7c8",
     "semantic_hash": ""
   },
@@ -306,8 +306,8 @@
     "semantic_hash": ""
   },
   "frontend/lib/api/types.ts": {
-    "mtime": 1795093326.3115897,
-    "seen": 1795093393.3305984,
+    "mtime": 1795093397.6832533,
+    "seen": 1795093922.0201733,
     "ast_hash": "080ec6d10ece25c29c6cef42935653c6",
     "semantic_hash": ""
   },
@@ -402,8 +402,8 @@
     "semantic_hash": ""
   },
   "pipeline.py": {
-    "mtime": 1795093322.5482643,
-    "seen": 1795093393.3306196,
+    "mtime": 1795093397.687581,
+    "seen": 1795093922.020195,
     "ast_hash": "3e2e29328ca32c9ffc666a7d3ee2e95e",
     "semantic_hash": ""
   },
@@ -432,38 +432,38 @@
     "semantic_hash": ""
   },
   ".claude/agents/haiku-worker.md": {
-    "mtime": 1795035913.7982478,
-    "seen": 1795086669.326933,
-    "ast_hash": "4d0b21afd1ff6c2a2da1ad379cbf3b40",
+    "mtime": 1795093397.443581,
+    "seen": 1795093922.0202012,
+    "ast_hash": "12c227cf9e32498eee1ce5a95a3d250a",
     "semantic_hash": ""
   },
   ".claude/agents/opus-worker.md": {
-    "mtime": 1795035975.4306736,
-    "seen": 1795086669.3269343,
-    "ast_hash": "901e50d61b621ea46a5dbcd35d10df62",
+    "mtime": 1795093397.443581,
+    "seen": 1795093922.0202024,
+    "ast_hash": "ee047b97e8144ec6f33ff56fa476d4f7",
     "semantic_hash": ""
   },
   ".claude/agents/sonnet-worker.md": {
-    "mtime": 1795035913.7982714,
-    "seen": 1795086669.3269358,
-    "ast_hash": "cbe5b827def6da25df26fe6eeb6a6006",
+    "mtime": 1795093397.443581,
+    "seen": 1795093922.0202057,
+    "ast_hash": "7709d5db17137ed75c4d52429c601f4d",
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1795035625.103546,
-    "seen": 1795086669.3269377,
-    "ast_hash": "d979593120ef9922ea0933ae719705f7",
+    "mtime": 1795093397.443581,
+    "seen": 1795093922.0202074,
+    "ast_hash": "4d633295cf1c716dfaf68f92e1609c20",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1795041075.357825,
-    "seen": 1795086669.3269389,
-    "ast_hash": "7a4efebd5486cbd8e87dd3cca20d778b",
+    "mtime": 1795093397.443581,
+    "seen": 1795093922.0202086,
+    "ast_hash": "71739b675cedec8eecdc5590a8e1a5bd",
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795093388.8595805,
-    "seen": 1795093393.3306332,
+    "mtime": 1795093397.6832533,
+    "seen": 1795093922.0202105,
     "ast_hash": "215eb7cf5fc75faf33bf2ecf6d208053",
     "semantic_hash": ""
   },
@@ -543,6 +543,18 @@
     "mtime": 1795086660.6948452,
     "seen": 1795086669.3268292,
     "ast_hash": "c67177f32b800528d7ebe6a152871cbb",
+    "semantic_hash": ""
+  },
+  ".claude/agents/sonnet-reviewer.md": {
+    "mtime": 1795093397.443581,
+    "seen": 1795093922.020204,
+    "ast_hash": "f5c6b1852e8038c49a9d73ea49c0d027",
+    "semantic_hash": ""
+  },
+  "docs/AI_TEAM.md": {
+    "mtime": 1795093397.443581,
+    "seen": 1795093922.0202117,
+    "ast_hash": "e5de3f9b03e1be97a70e80a035324cdd",
     "semantic_hash": ""
   },
   "frontend/package-lock.json": {

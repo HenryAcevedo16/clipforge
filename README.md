@@ -278,3 +278,5 @@ Cada clip de un directo guarda su propio trozo de video (15 s de margen a cada l
 ### Gratis por defecto; la IA solo al optimizar
 
 Por defecto NovoClip elige los clips **en tu PC, gratis** (volumen, risas, ganchos, ritmo y picos del chat) y no usa tokens ni tu suscripción. La IA (Claude o Gemini) solo entra cuando pulsas **Optimizar con IA** en un clip: ahí corrige cortes, gancho, título y hashtags y vuelve a revisarlo. Si quieres, puedes encender «Elegir los mejores momentos con IA» y «Revisar clips con IA» al crear un proyecto.
+
+Al crear un proyecto hay dos botones al final: **Generar sin IA (gratis)** y **Generar con IA** (elige y revisa con tu IA; se activa cuando hay una IA en Ajustes). En ambos casos puedes pulsar **Optimizar con IA** después en cada clip.
