@@ -168,7 +168,7 @@ python novoclip.py mi_video.mp4 -n 5 --min 15 --max 45 --style karaoke --lang es
 ## Consejos
 - Con GPU usa precisión "Máxima" (`large-v3`); en CPU "Equilibrada" (`small`) va bien.
 - Fuentes: mete un .ttf en `fonts/` y escribe su nombre en "Fuente".
-- Si YouTube da error "Sign in to confirm": `pip install -U yt-dlp` o usa `--cookies chrome`.
+- Si YouTube da error "Sign in to confirm you're not a bot": la app ya reintenta sola con tu sesión de Firefox, Edge, Chrome, Brave, Opera o Vivaldi (o con `cookies.txt` en la carpeta de NovoClip) y recuerda la que funcionó. Lo más fiable: entra a YouTube en Firefox, ciérralo y vuelve a intentar. También puedes exportar `cookies.txt` con la extensión «Get cookies.txt LOCALLY» (no se sube a GitHub).
 - La primera vez se descargan el modelo de Whisper (~500 MB en `small`) y el detector de caras YuNet (230 KB).
 - Usa solo contenido tuyo o con permiso para reutilizar.
 

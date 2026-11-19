@@ -48,3 +48,6 @@ frontend/out/
 # graphify
 graphify-out/cache/
 graphify-out/.graphify_*
+
+# Cookies de YouTube (sesión personal: nunca subir)
+cookies.txt

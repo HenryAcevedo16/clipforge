@@ -570,6 +570,85 @@ def describe_device(opts: Options) -> str:
 # --------------------------------------------------------------------------- #
 # 1. Descarga
 # --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# Cookies de YouTube: "Sign in to confirm you're not a bot"
+# --------------------------------------------------------------------------- #
+COOKIES_FILE = ROOT / "cookies.txt"          # exportado del navegador (formato Netscape); opcional
+COOKIE_BROWSERS = ("firefox", "edge", "chrome", "brave", "opera", "vivaldi")
+
+
+def _is_bot_check(err: BaseException) -> bool:
+    t = str(err).lower()
+    return "confirm you" in t and "bot" in t or "sign in to confirm" in t or "--cookies-from-browser" in t
+
+
+def _cookie_opts(method: Optional[str]) -> dict:
+    """Opciones de yt-dlp para un método: 'file' (cookies.txt), un navegador, o None (sin cookies)."""
+    if not method:
+        return {}
+    if method == "file":
+        return {"cookiefile": str(COOKIES_FILE)}
+    return {"cookiesfrombrowser": (method,)}
+
+
+def _cookie_methods(opts: Options) -> list:
+    """Orden de intentos: el que ya funcionó, el que eligió el usuario, sin cookies, cookies.txt y navegadores."""
+    first = [opts.cookies_from_browser] if opts.cookies_from_browser else []
+    remembered = load_config().get("yt_cookies")
+    if remembered:
+        first.insert(0, remembered)
+    rest = [None] + (["file"] if COOKIES_FILE.is_file() else []) + list(COOKIE_BROWSERS)
+    out: list = []
+    for m in first + rest:
+        if m not in out:
+            out.append(m)
+    return out
+
+
+def _cookie_opts_now(opts: Options) -> dict:
+    """Para llamadas sueltas: usa solo el método que ya se sabe que funciona (o el elegido)."""
+    m = opts.cookies_from_browser or load_config().get("yt_cookies")
+    return _cookie_opts(m)
+
+
+def yt_run(ydl_opts: dict, opts: Options, fn: Callable, progress: ProgressFn = _noop):
+    """Ejecuta fn(ydl). Si YouTube pide confirmar que no eres un robot, repite el intento con tus cookies
+    (cookies.txt o la sesión de Firefox/Edge/Chrome...) y recuerda el método que funcionó."""
+    import yt_dlp
+    methods = _cookie_methods(opts)
+    first_err: Optional[BaseException] = None
+    for k, m in enumerate(methods):
+        o = dict(ydl_opts, **_cookie_opts(m))
+        try:
+            with yt_dlp.YoutubeDL(o) as ydl:
+                res = fn(ydl)
+            if m and load_config().get("yt_cookies") != m:
+                try:
+                    save_config(yt_cookies=m)
+                except Exception:
+                    pass
+            return res
+        except Cancelled:
+            raise
+        except Exception as e:
+            if first_err is None:
+                first_err = e
+            if not _is_bot_check(first_err):
+                raise
+            if k + 1 < len(methods):
+                nm = methods[k + 1]
+                if nm:
+                    progress(2, "YouTube pide verificar que no eres un robot; pruebo con " +
+                             ("cookies.txt" if nm == "file" else f"tu sesión de {nm}") + "...")
+    raise RuntimeError(
+        "YouTube pide iniciar sesión para confirmar que no eres un robot y no se pudo usar ninguna sesión.\n"
+        "Solución (elige una):\n"
+        "  1) Abre Firefox, entra a YouTube con tu cuenta, cierra Firefox y vuelve a intentar (la app usa esa sesión sola).\n"
+        "  2) O exporta tus cookies con la extensión «Get cookies.txt LOCALLY» estando en youtube.com y guarda el archivo "
+        f"como  {COOKIES_FILE.name}  dentro de la carpeta de NovoClip.\n"
+        "  3) Actualiza el descargador:  .venv\\Scripts\\pip install -U \"yt-dlp[default]\"") from first_err
+
+
 def download(url: str, workdir: Path, opts: Options, progress: ProgressFn = _noop,
              audio_only: bool = False, section: Optional[tuple] = None, stem: str = "source",
              label: str = "Descargando video...") -> tuple[Path, str]:
@@ -611,13 +690,10 @@ def download(url: str, workdir: Path, opts: Options, progress: ProgressFn = _noo
         ydl_opts["external_downloader_args"] = {"ffmpeg_o": ["-c:v", "libx264", "-preset", "veryfast", "-crf", "8",
                                                              "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "320k"]}
         ydl_opts["merge_output_format"] = "mkv"
-    if opts.cookies_from_browser:
-        ydl_opts["cookiesfrombrowser"] = (opts.cookies_from_browser,)
     for old in workdir.glob(f"{stem}.*"):
         old.unlink(missing_ok=True)
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        title = info.get("title") or "video"
+    info = yt_run(ydl_opts, opts, lambda y: y.extract_info(url, download=True), progress)
+    title = info.get("title") or "video"
     done = [p for p in workdir.glob(f"{stem}.*") if p.suffix not in (".part", ".ytdl") and ".f" not in p.stem]
     if not done:
         raise RuntimeError("La descarga no terminó. Revisa tu conexión o actualiza yt-dlp (pip install -U yt-dlp).")
@@ -3180,8 +3256,7 @@ def fetch_captions(url: str, opts: Options) -> Optional[dict]:
     Devuelve {"language", "segments", "title", "duration", "source"} o None si el video no tiene."""
     import yt_dlp
     o = {"quiet": True, "no_warnings": True, "noplaylist": True, "skip_download": True}
-    if opts.cookies_from_browser:
-        o["cookiesfrombrowser"] = (opts.cookies_from_browser,)
+    o.update(_cookie_opts_now(opts))
     with yt_dlp.YoutubeDL(o) as y:
         info = y.extract_info(url, download=False)
         manual, auto = info.get("subtitles") or {}, info.get("automatic_captions") or {}
@@ -4099,8 +4174,7 @@ def _live_source(url: str, opts: Options):
                     o["impersonate"] = ImpersonateTarget.from_str(cl)
                 except Exception:
                     continue
-            if opts.cookies_from_browser:
-                o["cookiesfrombrowser"] = (opts.cookies_from_browser,)
+            o.update(_cookie_opts_now(opts))
             try:
                 check_cancel()
                 with yt_dlp.YoutubeDL(o) as y:
@@ -4520,10 +4594,7 @@ def preview_framing(source: str, workdir: Path, opts: Options, at: float = 0.35,
         import yt_dlp
         progress(5, "Mirando el video...")
         q = {"quiet": True, "no_warnings": True, "noplaylist": True}
-        if o.cookies_from_browser:
-            q["cookiesfrombrowser"] = (o.cookies_from_browser,)
-        with yt_dlp.YoutubeDL(q) as y:
-            info = y.extract_info(source, download=False)
+        info = yt_run(q, o, lambda y: y.extract_info(source, download=False), progress)
         if info.get("is_live"):
             raise RuntimeError("La vista previa no funciona con directos. Genera los clips y edita el encuadre de cada uno.")
         dur = float(info.get("duration") or 0)
