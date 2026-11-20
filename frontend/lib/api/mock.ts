@@ -199,6 +199,9 @@ export const mockApi: Api = {
   async optimizeClip() {
     return { id: "mock-opt" };
   },
+  async editClipWithAI() {
+    throw new ApiError("La edición con instrucciones necesita el servidor local real y una IA configurada en Ajustes.", 503);
+  },
   async revertClip() {
     return { id: "mock-rev" };
   },

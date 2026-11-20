@@ -1,5 +1,5 @@
 "use client";
-import { Check, Eraser, Highlighter, Sparkles, Loader2, Scissors, SpellCheck, Trash2 } from "lucide-react";
+import { AudioLines, Check, Eraser, Highlighter, Sparkles, Loader2, Scissors, SpellCheck, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { waitJob } from "@/lib/api/wait";
 import { api, ApiError, type ClipEditData, type ClipToggles, type EditWord } from "@/lib/api";
@@ -64,6 +64,7 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
   const [showHook, setShowHook] = useState(true);
   const [caption, setCaption] = useState("");
   const [tags, setTags] = useState("");
+  const [aiInstruction, setAiInstruction] = useState("");
   const [layout, setLayout] = useState("auto");
   const [style, setStyle] = useState("viral");
   const [capOn, setCapOn] = useState(true);
@@ -116,6 +117,18 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
 
   const lo = words.length ? Math.max(0, Math.floor(words[0].s * 10) / 10) : 0;
   const hi = words.length ? Math.ceil(words[words.length - 1].e * 10) / 10 : 0;
+  const timeline = useMemo(() => {
+    const count = 64;
+    const span = Math.max(0.1, hi - lo);
+    return Array.from({ length: count }, (_, i) => {
+      const a = lo + (span * i) / count;
+      const b = lo + (span * (i + 1)) / count;
+      const speech = words.reduce((n, w) => n + (w.e >= a && w.s < b ? 1 : 0), 0);
+      const audioPeak = data?.waveform?.[i];
+      const level = typeof audioPeak === "number" ? 8 + audioPeak * 86 : Math.min(94, 10 + speech * 16);
+      return { time: a, level, selected: a <= end && b >= start };
+    });
+  }, [words, lo, hi, start, end, data?.waveform]);
   const first = useMemo(() => words.findIndex((w) => w.e > start + 0.05), [words, start]);
   const last = useMemo(() => words.reduce((acc, w, k) => (w.s < end - 0.2 ? k : acc), -1), [words, end]);
 
@@ -223,9 +236,54 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
     }
   };
 
+  const revertOptimization = async () => {
+    setBusy(true);
+    setPct(0);
+    setMsg("Restaurando la versión anterior…");
+    try {
+      const { id } = await api.revertClip(jobId, index);
+      await waitJob(id, (p, m) => { setPct(p); setMsg(m); }, () => alive.current);
+      if (!alive.current) return;
+      fill(await api.getClipEdit(jobId, index));
+      onChanged();
+      toast("Se restauró la versión anterior del clip.");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "No se pudo restaurar el clip.", "bad");
+    } finally {
+      if (alive.current) setBusy(false);
+    }
+  };
+
+  const applyInstruction = async () => {
+    const instruction = aiInstruction.trim();
+    if (!instruction) return toast("Escribe qué quieres cambiar.", "bad");
+    if (pendingEdits) return toast("Primero pulsa «Volver a generar» para guardar tus cambios manuales.", "bad");
+    setBusy(true);
+    setPct(0);
+    setMsg("La IA está aplicando tus instrucciones…");
+    try {
+      const { id } = await api.editClipWithAI(jobId, index, instruction);
+      await waitJob(id, (p, m) => { setPct(p); setMsg(m); }, () => alive.current);
+      if (!alive.current) return;
+      fill(await api.getClipEdit(jobId, index));
+      setAiInstruction("");
+      onChanged();
+      toast("Instrucciones aplicadas. Revisa el clip antes de exportarlo.");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "No se pudieron aplicar las instrucciones.", "bad");
+    } finally {
+      if (alive.current) setBusy(false);
+    }
+  };
+
   const saveText = async () => {
     try {
-      await api.updateClipMeta(jobId, index, { title, caption, hashtags: tags.split(/\s+/).filter(Boolean) });
+      const nextTitle = title.trim() || data?.clip.title || title;
+      const nextTags = tags.split(/\s+/).filter(Boolean).map((tag) => tag.startsWith("#") ? tag : `#${tag}`);
+      await api.updateClipMeta(jobId, index, { title: nextTitle, caption, hashtags: nextTags });
+      setTitle(nextTitle);
+      setTags(nextTags.join(" "));
+      setData((current) => current ? { ...current, clip: { ...current.clip, title: nextTitle, caption, hashtags: nextTags } } : current);
       toast("Título, descripción y hashtags guardados.");
       onChanged();
     } catch (e) {
@@ -251,6 +309,22 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
 
   const videoSrc = data ? `${api.fileUrl(jobId, data.clip.file)}${data.clip.rev ? `?v=${data.clip.rev}` : ""}` : "";
   const changed = data && (Math.abs(start - orig[0]) > 0.01 || Math.abs(end - orig[1]) > 0.01);
+  const savedToggles = { ...TOGGLE_DEFAULTS, ...(data?.toggles ?? {}) };
+  const pendingEdits = !!data && (
+    Math.abs(start - data.clip.start) > 0.01 ||
+    Math.abs(end - data.clip.end) > 0.01 ||
+    title !== data.clip.title ||
+    hook !== data.clip.hook ||
+    caption !== data.clip.caption ||
+    tags !== data.clip.hashtags.join(" ") ||
+    layout !== data.layout ||
+    (capOn ? style : "none") !== data.caption_style ||
+    showHook !== (data.show_hook !== false && !!data.clip.hook) ||
+    [...kws].sort().join("|") !== [...(data.clip.keywords ?? [])].sort().join("|") ||
+    words.length !== data.words.length ||
+    words.some((w, i) => w.w !== data.words[i]?.w || w.s !== data.words[i]?.s || w.e !== data.words[i]?.e) ||
+    (Object.keys(TOGGLE_DEFAULTS) as (keyof ClipToggles)[]).some((key) => tg[key] !== savedToggles[key])
+  );
 
   return (
     <Dialog
@@ -264,6 +338,11 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
             <Button variant="danger" onClick={remove} icon={<Trash2 className="size-4" aria-hidden />} disabled={busy}>
               {confirmDel ? "¿Seguro? Pulsa otra vez" : "Eliminar clip"}
             </Button>
+            {data.clip.optimized && data.clip.opt_prev && (
+              <Button onClick={revertOptimization} disabled={busy} icon={<Undo2 className="size-4" aria-hidden />}>
+                Restaurar versión anterior
+              </Button>
+            )}
             <Button onClick={optimize} disabled={busy} icon={<Sparkles className="size-4" aria-hidden />}>
               Optimizar con IA
             </Button>
@@ -322,6 +401,54 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
                 Empieza en <b className="text-ink">{sec(start)}</b> · termina en <b className="text-ink">{sec(end)}</b> · dura <b className="text-ink">{formatDuration(end - start)}</b>
                 {changed && <span className="ml-2 text-warn">(cambiado)</span>}
               </p>
+              {words.length > 0 && (
+                <section className="mt-4 rounded-2xl border border-line/80 bg-gradient-to-br from-raised-2 to-surface p-3.5 sm:p-4" aria-label="Línea de tiempo del clip">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="grid size-8 place-items-center rounded-xl bg-accent-soft text-accent-hi"><AudioLines className="size-4" aria-hidden /></span>
+                      <div>
+                        <p className="text-sm font-bold text-ink">Línea de tiempo</p>
+                        <p className="text-[11px] text-ink-3">{data.waveform?.length ? "Forma de onda del audio original" : "Actividad de voz estimada desde la transcripción"}</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full border border-line bg-raised px-2.5 py-1 text-[11px] font-bold text-ink-2">Marca {next === "s" ? "el inicio" : "el final"}</span>
+                  </div>
+                  <div className="relative flex h-[5.25rem] items-end gap-[3px] overflow-hidden rounded-xl border border-line/70 bg-[#0B1118] px-2 pb-2 pt-2">
+                    {timeline.map((bin, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        title={sec(bin.time)}
+                        aria-label={`Seleccionar ${sec(bin.time)} como ${next === "s" ? "inicio" : "final"}`}
+                        onClick={() => {
+                          if (next === "s") {
+                            setStart(Math.max(lo, Math.min(end - 1, bin.time)));
+                            setNext("e");
+                          } else {
+                            setEnd(Math.min(hi, Math.max(start + 1, bin.time)));
+                            setNext("s");
+                          }
+                        }}
+                        className="group flex h-full min-w-0 flex-1 items-end justify-center rounded-t-sm outline-none focus-visible:ring-2 focus-visible:ring-accent-hi"
+                      >
+                        <span
+                          className={cn("w-full rounded-t-[3px] transition-colors duration-150", bin.selected ? "bg-accent-hi shadow-[0_0_10px_var(--brand-glow)]" : "bg-[#40505D] group-hover:bg-[#6A8795]")}
+                          style={{ height: `${bin.level}%` }}
+                        />
+                      </button>
+                    ))}
+                    <div className="pointer-events-none absolute inset-y-0 border-l-2 border-ok" style={{ left: `${Math.max(0, Math.min(1, (start - lo) / Math.max(0.1, hi - lo))) * 100}%` }} />
+                    <div className="pointer-events-none absolute inset-y-0 border-l-2 border-bad" style={{ left: `${Math.max(0, Math.min(1, (end - lo) / Math.max(0.1, hi - lo))) * 100}%` }} />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-[11px] font-medium tabular-nums text-ink-3">
+                    <span>{sec(lo)}</span>
+                    <span className="text-ok">IN {sec(start)}</span>
+                    <span className="text-bad">OUT {sec(end)}</span>
+                    <span>{sec(hi)}</span>
+                  </div>
+                  <p className="mt-2 text-[11px] text-ink-3">Haz clic sobre las barras para colocar IN y OUT. Usa los controles inferiores para ajustar con precisión.</p>
+                </section>
+              )}
               {words.length > 0 && (
                 <div className="mt-3 grid gap-3 rounded-2xl border border-line bg-raised-2/50 p-3.5 sm:grid-cols-2">
                   <label className="flex flex-col gap-1 text-sm font-semibold text-ink-2">
@@ -397,6 +524,17 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
             </div>
           </div>
 
+          <section className="rounded-2xl border border-accent/25 bg-gradient-to-br from-accent-soft/70 via-raised-2 to-surface p-4 sm:p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <span className="grid size-9 place-items-center rounded-xl bg-accent-soft text-accent-hi"><Sparkles className="size-4" aria-hidden /></span>
+              <div><h3 className="text-sm font-extrabold text-ink">Editor con instrucciones</h3><p className="text-xs text-ink-3">Dile a la IA configurada en Ajustes qué quieres mejorar</p></div>
+            </div>
+            <textarea value={aiInstruction} onChange={(e) => setAiInstruction(e.target.value)} maxLength={1200} rows={3} disabled={busy} placeholder="Ej.: empieza justo cuando dice «te voy a contar algo», elimina la pausa del principio, conserva el final completo y crea un gancho más curioso sin inventar frases." className={cn(inputClass, "min-h-24 resize-y py-3")} aria-label="Instrucciones para editar el clip con IA" />
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[11px] text-ink-3">{api.kind !== "real" ? "Disponible al conectar el servidor local real." : pendingEdits ? "Guarda primero los cambios manuales con «Volver a generar»." : `${aiInstruction.length}/1200 · Requiere una IA activa en Ajustes`}</span>
+              <Button variant="primary" size="sm" onClick={applyInstruction} disabled={api.kind !== "real" || busy || pendingEdits || !aiInstruction.trim()} icon={<Sparkles className="size-4" aria-hidden />}>Aplicar instrucciones</Button>
+            </div>
+          </section>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Título">{(a) => <input {...a} value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />}</Field>
             <div className="flex flex-col gap-2">

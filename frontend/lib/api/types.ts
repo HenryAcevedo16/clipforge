@@ -76,6 +76,7 @@ export interface ClipResult {
   end: number;
   title: string;
   hook: string;
+  hook_quote?: string; // cita literal extraída de la transcripción para validar el gancho hablado
   score: number; // 0-100 (virality_score)
   reason: string;
   caption: string;
@@ -185,6 +186,7 @@ export interface EditWord {
 export interface ClipEditData {
   clip: ClipResult;
   words: EditWord[];
+  waveform?: number[]; // picos normalizados del audio original para la línea de tiempo
   editable: boolean;
   layout: string;
   caption_style: string;
@@ -356,6 +358,7 @@ export interface Api {
   renderClip(jobId: string, index: number, edits: Partial<ClipEdits>): Promise<{ id: string }>;
   deleteClip(jobId: string, index: number): Promise<void>;
   optimizeClip(jobId: string, index: number): Promise<{ id: string }>;
+  editClipWithAI(jobId: string, index: number, instruction: string): Promise<{ id: string }>;
   revertClip(jobId: string, index: number): Promise<{ id: string }>;
   /** Guarda al instante título, descripción y hashtags (sin volver a generar el video). */
   updateClipMeta(jobId: string, index: number, meta: { title?: string; caption?: string; hashtags?: string[] }): Promise<void>;
