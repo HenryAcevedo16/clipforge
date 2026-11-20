@@ -357,6 +357,7 @@ export interface Api {
   renderClip(jobId: string, index: number, edits: Partial<ClipEdits>): Promise<{ id: string }>;
   deleteClip(jobId: string, index: number): Promise<void>;
   optimizeClip(jobId: string, index: number): Promise<{ id: string }>;
+  editClipWithAI(jobId: string, index: number, instruction: string): Promise<{ id: string }>;
   revertClip(jobId: string, index: number): Promise<{ id: string }>;
   /** Guarda al instante título, descripción y hashtags (sin volver a generar el video). */
   updateClipMeta(jobId: string, index: number, meta: { title?: string; caption?: string; hashtags?: string[] }): Promise<void>;
