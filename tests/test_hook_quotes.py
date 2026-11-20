@@ -29,6 +29,14 @@ class SpokenQuoteTests(unittest.TestCase):
         words = [{"w": "lejos", "s": 20.0, "e": 20.4}]
         self.assertEqual(_spoken_quote(words, 0.0), "")
 
+    def test_does_not_join_words_across_a_long_pause(self):
+        words = [
+            {"w": "primera", "s": 1.0, "e": 1.3},
+            {"w": "segunda", "s": 1.4, "e": 1.7},
+            {"w": "después", "s": 3.0, "e": 3.3},
+        ]
+        self.assertEqual(_spoken_quote(words, 1.0), "primera segunda")
+
 
 class NarrativeFeatureTests(unittest.TestCase):
     def test_detects_an_open_ending(self):
