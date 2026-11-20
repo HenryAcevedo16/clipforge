@@ -3,7 +3,7 @@
 ## Flujo de edición
 
 1. Abre un clip desde un proyecto y revisa el reproductor.
-2. Usa la línea de tiempo para marcar IN y OUT. El mapa de barras representa actividad de voz estimada a partir de la transcripción; no es una forma de onda de audio.
+2. Usa la línea de tiempo para marcar IN y OUT. Cuando el archivo fuente está disponible, muestra una forma de onda real calculada del audio original; en trabajos antiguos o fuentes no disponibles, usa la actividad estimada a partir de la transcripción.
 3. Ajusta los segundos con los controles de inicio y fin o selecciona palabras de la transcripción.
 4. Cambia palabras de subtítulos, resalta términos, elige encuadre y configura subtítulos y efectos.
 5. Escribe una instrucción editorial para pedir cambios a la IA. Ejemplos:
@@ -25,7 +25,7 @@ Las instrucciones de IA trabajan sobre la última versión guardada del clip. Si
 
 ## Límites actuales
 
-- La línea de tiempo representa actividad de voz derivada de palabras transcritas, no un waveform PCM.
+- La línea de tiempo calcula picos normalizados del audio original cuando el archivo está disponible; usa la transcripción como fallback.
 - El editor procesa y renderiza en el equipo donde corre NovoClip.
 - La edición en lenguaje natural usa el proveedor de IA configurado en Ajustes; requiere que ese proveedor esté disponible.
 - Esta integración no conecta por sí sola la conversación web de ChatGPT con el servidor local. Para ese flujo se necesita una conexión remota autorizada; no se debe exponer el servidor local sin autenticación.
