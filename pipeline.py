@@ -1107,9 +1107,10 @@ def apply_glossary(tr: Optional[dict]) -> Optional[dict]:
     for seg in tr.get("segments", []):
         ws = seg.get("words") or []
         out, i, changed = [], 0, False
+        nw = [_norm(w["w"]) for w in ws]                    # se normaliza una sola vez por segmento
         while i < len(ws):
             hit = next(((len(src), dst) for src, dst in gl
-                        if i + len(src) <= len(ws) and tuple(_norm(w["w"]) for w in ws[i:i + len(src)]) == src), None)
+                        if i + len(src) <= len(ws) and tuple(nw[i:i + len(src)]) == src), None)
             if not hit:
                 out.append(ws[i])
                 i += 1
@@ -1129,11 +1130,15 @@ def apply_glossary(tr: Optional[dict]) -> Optional[dict]:
     return tr
 
 
+_INTERROG = {"qué", "que", "cómo", "como", "cuál", "cual", "cuándo", "cuando", "quién", "quien", "dónde", "donde", "por", "why", "how", "what"}
+
+
 def _hook_options(hook: str, text: str, index: int, max_options: int = 3) -> list:
     """Hasta 3 ganchos sin IA: el actual primero y 1-2 plantillas de reglas/ganchos.txt que apliquen (rotan con el clip)."""
     out = [hook]
-    kw = _auto_keywords(text)
-    tema = next((k for k in kw if not k.isdigit()), "")
+    stop = HOOK_WORDS | FILLER_START | HOOK_TAIL | _INTERROG
+    toks = [t for t in (_norm(w) for w in text.split()) if len(t) >= 5 and t not in stop and not t.isdigit()]
+    tema = max(dict.fromkeys(toks), key=toks.count) if toks else ""     # sustantivo más repetido (no palabras de impacto ni preguntas)
     nums = re.findall(r"\d+", text)
     first = _norm(hook.split()[0]) if hook.split() else ""
     ok = {"pregunta": hook.rstrip().endswith("?") or first in ("qué", "que", "cómo", "como", "cuál", "cuándo", "por", "quién"),
@@ -1141,7 +1146,7 @@ def _hook_options(hook: str, text: str, index: int, max_options: int = 3) -> lis
     cands = [(t, tpl) for t, tpl in rules.read_templates() if ok.get(t)]
     for k in range(len(cands)):
         t, tpl = cands[(index + k) % len(cands)]
-        txt = tpl.replace("{frase}", hook.rstrip("?").strip()).replace("{tema}", tema).replace("{numero}", nums[0] if nums else "")
+        txt = tpl.replace("{frase}", hook.strip().lstrip("¿").rstrip("?").strip()).replace("{tema}", tema).replace("{numero}", nums[0] if nums else "")
         if "{" in txt or "}" in txt:
             continue
         txt = txt.strip().upper()
@@ -1194,10 +1199,11 @@ def _trim_start(line: dict) -> float:
 
 
 def _auto_keywords(text: str, n: int = 6) -> list[str]:
+    never = rules.read_highlight()[1]
     out = []
     for w in text.split():
         t = _norm(w)
-        if t and (t in HOOK_WORDS or re.fullmatch(r"\d+", t)) and t not in out and t not in rules.read_highlight()[1]:
+        if t and (t in HOOK_WORDS or re.fullmatch(r"\d+", t)) and t not in out and t not in never:
             out.append(t)
     return out[:n]
 

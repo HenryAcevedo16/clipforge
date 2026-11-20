@@ -124,7 +124,7 @@ def test_hook_options_max3_first_is_current_no_leftovers(rdir):
     opts = pipeline._hook_options("POR QUÉ ESTO FALLA", "el error del dinero pasó 3 veces", 1)
     assert opts[0] == "POR QUÉ ESTO FALLA" and 1 < len(opts) <= 3
     assert len(set(opts)) == len(opts) and not any("{" in o for o in opts)
-    q = pipeline._hook_options("POR QUÉ ESTO FALLA", "sin cifras ni tema", 0)
+    q = pipeline._hook_options("POR QUÉ ESTO FALLA", "sin ni ya no", 0)
     assert q[0] == "POR QUÉ ESTO FALLA" and all(o.endswith("?") for o in q[1:])      # solo aplica la plantilla de pregunta
 
 
@@ -175,3 +175,20 @@ def test_guide_only_comments_gives_empty_and_prompt_unchanged(rdir):
     base, user = rdir
     (base / "guia_ia.md").write_text("# nada\n", encoding="utf-8")
     assert rules.read_guide() == ""
+
+
+def test_hook_options_no_double_inverted_mark(rdir):
+    base, user = rdir
+    (base / "ganchos.txt").write_text("pregunta | ¿{frase}\n", encoding="utf-8")
+    o = pipeline._hook_options("¿QUÉ PASA AQUÍ?", "texto cualquiera", 0)
+    assert "¿¿" not in " ".join(o) and "¿QUÉ PASA AQUÍ?" in o
+
+
+def test_hook_topic_is_a_noun_not_a_question_or_impact_word(rdir):
+    base, user = rdir
+    (base / "ganchos.txt").write_text("tema | Lo que nadie dice de {tema}\n", encoding="utf-8")
+    (base / "palabras_impacto.txt").write_text("qué\nincreíble\nnadie\n", encoding="utf-8")
+    pipeline.load_rules()
+    o = pipeline._hook_options("MIRA ESTO", "qué increíble el dinero, el dinero cambia todo y nadie lo ve", 0)
+    assert any("DINERO" in x for x in o[1:]) and not any(("QUÉ" in x.split()[-1:] or "INCREÍBLE" in x) for x in o[1:])
+    assert pipeline._hook_options("MIRA ESTO", "qué increíble nadie", 0) == ["MIRA ESTO"]      # sin tema válido no hay plantilla de tema
