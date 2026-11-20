@@ -503,11 +503,11 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
           <section className="rounded-2xl border border-accent/25 bg-gradient-to-br from-accent-soft/70 via-raised-2 to-surface p-4 sm:p-5">
             <div className="mb-3 flex items-center gap-2">
               <span className="grid size-9 place-items-center rounded-xl bg-accent-soft text-accent-hi"><Sparkles className="size-4" aria-hidden /></span>
-              <div><h3 className="text-sm font-extrabold text-ink">Editor con instrucciones</h3><p className="text-xs text-ink-3">Dile a la IA exactamente qué quieres mejorar</p></div>
+              <div><h3 className="text-sm font-extrabold text-ink">Editor con instrucciones</h3><p className="text-xs text-ink-3">Dile a la IA configurada en Ajustes qué quieres mejorar</p></div>
             </div>
             <textarea value={aiInstruction} onChange={(e) => setAiInstruction(e.target.value)} maxLength={1200} rows={3} disabled={busy} placeholder="Ej.: empieza justo cuando dice «te voy a contar algo», elimina la pausa del principio, conserva el final completo y crea un gancho más curioso sin inventar frases." className={cn(inputClass, "min-h-24 resize-y py-3")} aria-label="Instrucciones para editar el clip con IA" />
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-[11px] text-ink-3">{aiInstruction.length}/1200 · La IA respeta el contenido hablado</span>
+              <span className="text-[11px] text-ink-3">{aiInstruction.length}/1200 · Requiere una IA activa en Ajustes</span>
               <Button variant="primary" size="sm" onClick={applyInstruction} disabled={busy || !aiInstruction.trim()} icon={<Sparkles className="size-4" aria-hidden />}>Aplicar instrucciones</Button>
             </div>
           </section>
