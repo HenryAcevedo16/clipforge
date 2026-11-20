@@ -526,8 +526,8 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
             </div>
             <textarea value={aiInstruction} onChange={(e) => setAiInstruction(e.target.value)} maxLength={1200} rows={3} disabled={busy} placeholder="Ej.: empieza justo cuando dice «te voy a contar algo», elimina la pausa del principio, conserva el final completo y crea un gancho más curioso sin inventar frases." className={cn(inputClass, "min-h-24 resize-y py-3")} aria-label="Instrucciones para editar el clip con IA" />
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-[11px] text-ink-3">{pendingEdits ? "Guarda primero los cambios manuales con «Volver a generar»." : `${aiInstruction.length}/1200 · Requiere una IA activa en Ajustes`}</span>
-              <Button variant="primary" size="sm" onClick={applyInstruction} disabled={busy || pendingEdits || !aiInstruction.trim()} icon={<Sparkles className="size-4" aria-hidden />}>Aplicar instrucciones</Button>
+              <span className="text-[11px] text-ink-3">{api.kind !== "real" ? "Disponible al conectar el servidor local real." : pendingEdits ? "Guarda primero los cambios manuales con «Volver a generar»." : `${aiInstruction.length}/1200 · Requiere una IA activa en Ajustes`}</span>
+              <Button variant="primary" size="sm" onClick={applyInstruction} disabled={api.kind !== "real" || busy || pendingEdits || !aiInstruction.trim()} icon={<Sparkles className="size-4" aria-hidden />}>Aplicar instrucciones</Button>
             </div>
           </section>
           <div className="grid gap-4 sm:grid-cols-2">
