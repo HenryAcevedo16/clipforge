@@ -44,4 +44,6 @@ jobs:
       - name: Type-check frontend
         run: npm run typecheck
       - name: Build static frontend
+        env:
+          NEXT_PUBLIC_USE_MOCK: "false"
         run: npm run build
