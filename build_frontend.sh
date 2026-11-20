@@ -7,7 +7,7 @@ command -v npm >/dev/null || { echo "No se encontro npm."; exit 1; }
 
 cd frontend
 npm ci
-npm run build
+NEXT_PUBLIC_USE_MOCK=false npm run build
 cd ..
 mkdir -p web
 cp -R frontend/out/. web/
