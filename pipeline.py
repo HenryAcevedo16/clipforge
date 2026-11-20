@@ -1024,7 +1024,7 @@ def _line_features(lines: list, energy: list) -> list[dict]:
             "cta": 1 if any(c in low for c in CTA_MARKERS) else 0,
             "weak_start": 1 if toks and toks[0] in FILLER_START else 0,
             "complete": 1 if re.search(r"[.!?…]$", ln["text"].strip()) else 0,
-            "open_end": 1 if re.search(r"(?:,\\s*|:\\s*|\\b(?:porque|pero|aunque|entonces|así que|por eso|que|y|o|si)\\s*)$", low) else 0,
+            "open_end": 1 if re.search(r"(?:,\s*|:\s*|\b(?:porque|pero|aunque|entonces|así que|por eso|que|y|o|si)\s*)$", low) else 0,
             "words": n, "energy": en,
         })
     return feats
