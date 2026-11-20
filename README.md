@@ -287,3 +287,7 @@ Cada clip de un directo guarda su propio trozo de video (15 s de margen a cada l
 Por defecto NovoClip elige los clips **en tu PC, gratis** (volumen, risas, ganchos, ritmo y picos del chat) y no usa tokens ni tu suscripción. La IA (Claude o Gemini) solo entra cuando pulsas **Optimizar con IA** en un clip: ahí corrige cortes, gancho, título y hashtags y vuelve a revisarlo. Si quieres, puedes encender «Elegir los mejores momentos con IA» y «Revisar clips con IA» al crear un proyecto.
 
 Al crear un proyecto hay dos botones al final: **Generar sin IA (gratis)** y **Generar con IA** (elige y revisa con tu IA; se activa cuando hay una IA en Ajustes). En ambos casos puedes pulsar **Optimizar con IA** después en cada clip.
+
+### Optimizar con IA repartido entre modelos
+
+Al pulsar **Optimizar con IA**: **Sonnet** ajusta el corte, el encuadre y las palabras clave; **Haiku** escribe el gancho, el título, la descripción y los hashtags; **Opus** verifica un resumen corto y pide repetir solo la parte que falle (máximo 2 rondas). Si el reparto no se puede usar, vuelve al modelo de siempre. Se puede cambiar con las variables `NOVOCLIP_MODEL_TECH`, `NOVOCLIP_MODEL_COPY` y `NOVOCLIP_MODEL_VERIFY`. Con Gemini se usa un solo modelo y no hay verificación de Opus.

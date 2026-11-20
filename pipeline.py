@@ -1509,8 +1509,26 @@ def _extract_json(text: str) -> str:
     return text[a : b + 1]
 
 
-def ask_claude(prompt: str, schema, opts: Options, images: Optional[list] = None, videos: Optional[list] = None):
+# Reparto de la carga entre modelos: Opus manda y verifica, Sonnet hace lo técnico, Haiku escribe los textos.
+# Se pueden cambiar con NOVOCLIP_MODEL_TECH / _COPY / _VERIFY. Sin rol se usa el modelo de siempre.
+_ROLE_MODELS = {"tech": ("sonnet", "claude-sonnet-5-5"), "copy": ("haiku", "claude-haiku-5-5"),
+                "verify": ("opus", "claude-opus-5-5")}
+_MODEL_ERR = re.compile(r"model|limit|quota|overload|rate|capacity", re.I)
+
+
+def _role_models(role: Optional[str], backend: str, opts: Options) -> list:
+    """Modelos a probar para un rol, en orden; el último es el modelo de respaldo (el de siempre)."""
+    default = (os.environ.get("NOVOCLIP_CLAUDE_MODEL") or "sonnet") if backend == "cli" else opts.ai_model
+    if role not in _ROLE_MODELS:
+        return [default]
+    want = os.environ.get(f"NOVOCLIP_MODEL_{role.upper()}") or _ROLE_MODELS[role][0 if backend == "cli" else 1]
+    return [want] if want == default else [want, default]
+
+
+def ask_claude(prompt: str, schema, opts: Options, images: Optional[list] = None, videos: Optional[list] = None,
+               role: Optional[str] = None):
     """Pide a Claude una respuesta con la forma de `schema` (modelo pydantic).
+    role: "tech" (Sonnet) | "copy" (Haiku) | "verify" (Opus). Con Gemini el rol se ignora.
 
     images: lista de (etiqueta, bytes_jpeg). Con la API van en el mensaje; con Claude Code
     se guardan en una carpeta temporal y Claude las abre con su herramienta de lectura.
@@ -1534,10 +1552,17 @@ def ask_claude(prompt: str, schema, opts: Options, images: Optional[list] = None
                 content.append({"type": "text", "text": label})
                 content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
                                                             "data": base64.b64encode(data).decode()}})
-        resp = anthropic.Anthropic(api_key=anthropic_key()).messages.parse(
-            model=opts.ai_model, max_tokens=16000, output_config={"effort": os.environ.get("NOVOCLIP_CLAUDE_EFFORT") or "high"},
-            messages=[{"role": "user", "content": content}], output_format=schema,
-        )
+        client = anthropic.Anthropic(api_key=anthropic_key())
+        models = _role_models(role, "api", opts)
+        for k, m in enumerate(models):
+            kw = {} if role == "copy" else {"output_config": {"effort": os.environ.get("NOVOCLIP_CLAUDE_EFFORT") or "high"}}
+            try:
+                resp = client.messages.parse(model=m, max_tokens=16000, messages=[{"role": "user", "content": content}],
+                                             output_format=schema, **kw)
+                break
+            except anthropic.NotFoundError:        # el modelo del rol no existe: se usa el de siempre
+                if k + 1 >= len(models):
+                    raise
         if resp.stop_reason == "refusal" or resp.parsed_output is None:
             raise RuntimeError("la IA no devolvió respuesta")
         return resp.parsed_output
@@ -1565,33 +1590,41 @@ def ask_claude(prompt: str, schema, opts: Options, images: Optional[list] = None
             cmd += ["--allowedTools", "Read"]
         else:
             cmd += ["--disallowedTools", "Bash", "Edit", "Write", "WebFetch", "WebSearch", "Read", "Glob", "Grep"]
-        # Con Claude Code se usa Opus por defecto (NOVOCLIP_CLAUDE_MODEL lo cambia: sonnet, haiku...)
-        model = os.environ.get("NOVOCLIP_CLAUDE_MODEL") or "sonnet"
-        cmd += ["--model", model, "--effort", os.environ.get("NOVOCLIP_CLAUDE_EFFORT") or "high"]
+        # Sin rol: NOVOCLIP_CLAUDE_MODEL o Sonnet. Con rol: el modelo del rol y, si falla por modelo/límite, el de siempre.
         env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
 
         last_err = ""
-        for _ in range(2):
-            r = _sp_run(cmd, input=full, capture_output=True, text=True, encoding="utf-8",
-                               errors="replace", cwd=tmp, env=env, timeout=900)
-            out = r.stdout.strip()
-            try:
-                data = json.loads(out)
-                if data.get("is_error"):
-                    raise RuntimeError(str(data.get("result") or data.get("subtype"))[:300])
-                text = data.get("result") or ""
-            except json.JSONDecodeError:
-                text = out
-            if r.returncode != 0 and not text:
-                last_err = (r.stderr or out)[-300:]
-                if "login" in last_err.lower() or "auth" in last_err.lower():
-                    raise RuntimeError("Claude Code no tiene sesión iniciada: abre una terminal, escribe "
-                                       "`claude` y entra con tu cuenta.")
-                continue
-            try:
-                return schema.model_validate_json(_extract_json(text))
-            except Exception as e:
-                last_err = f"respuesta no válida: {str(e)[:200]}"
+        for model in _role_models(role, "cli", opts):
+            mcmd = cmd + ["--model", model]
+            if role != "copy":      # --effort con Haiku no está comprobado: se omite para ese rol
+                mcmd += ["--effort", os.environ.get("NOVOCLIP_CLAUDE_EFFORT") or "high"]
+            for _ in range(2):
+                r = _sp_run(mcmd, input=full, capture_output=True, text=True, encoding="utf-8",
+                            errors="replace", cwd=tmp, env=env, timeout=900)
+                out = r.stdout.strip()
+                try:
+                    data = json.loads(out)
+                    if data.get("is_error"):
+                        msg = str(data.get("result") or data.get("subtype"))[:300]
+                        if role and _MODEL_ERR.search(msg):
+                            last_err = msg
+                            break           # siguiente modelo
+                        raise RuntimeError(msg)
+                    text = data.get("result") or ""
+                except json.JSONDecodeError:
+                    text = out
+                if r.returncode != 0 and not text:
+                    last_err = (r.stderr or out)[-300:]
+                    if "login" in last_err.lower() or "auth" in last_err.lower():
+                        raise RuntimeError("Claude Code no tiene sesión iniciada: abre una terminal, escribe "
+                                           "`claude` y entra con tu cuenta.")
+                    if role and _MODEL_ERR.search(last_err):
+                        break               # siguiente modelo
+                    continue
+                try:
+                    return schema.model_validate_json(_extract_json(text))
+                except Exception as e:
+                    last_err = f"respuesta no válida: {str(e)[:200]}"
         raise RuntimeError(f"Claude Code falló: {last_err}")
 
 
@@ -4014,24 +4047,33 @@ ARREGLA todo lo que esté a tu alcance con tus cambios: problemas de inicio, fin
 y reescribiendo los textos; un problema de encuadre se arregla eligiendo otro "layout"; lo que no se pueda arreglar así, anótalo en "no_resuelto".
 """
 
-    class Optim(BaseModel):
+    # Reparto: SONNET (cortes, encuadre, palabras clave) -> HAIKU (textos) -> OPUS verifica. Opus solo lee un resumen corto.
+    class Tech(BaseModel):
         start_word: int = Field(description="índice de la primera palabra del clip (el gancho)")
         end_word: int = Field(description="índice de la última palabra (donde la idea queda cerrada, fin de frase)")
+        keywords: list[str] = Field(description="3-8 palabras EXACTAS del clip que conviene resaltar")
+        layout: str = Field(default="", description="solo si la revisión detectó un problema de ENCUADRE: auto | speaker | wide | track | blur | gaming | gamecenter | split. Vacío = no cambiar")
+        cambios: list[str] = Field(description="2-4 frases cortas, en español, explicando qué cambiaste en el corte y por qué")
+        no_resuelto: list[str] = Field(default_factory=list, description="problemas de la revisión que NO se pueden arreglar solos; vacío si arreglaste todo")
+
+    class Copy(BaseModel):
         title: str = Field(description="título para publicar, máx 60 caracteres")
         hook: str = Field(description="texto en pantalla los primeros 3 s, máx 7 palabras, que genere curiosidad")
         caption: str = Field(description="descripción con una pregunta que invite a comentar")
         hashtags: list[str] = Field(description="3-6 hashtags")
-        keywords: list[str] = Field(description="3-8 palabras EXACTAS del clip que conviene resaltar")
-        layout: str = Field(default="", description="solo si la revisión detectó un problema de ENCUADRE: auto | speaker | wide | track | blur | gaming | gamecenter | split. Vacío = no cambiar")
-        cambios: list[str] = Field(description="2-5 frases cortas, en español, explicando qué cambiaste y por qué (incluye qué problema de la revisión arreglaste)")
-        no_resuelto: list[str] = Field(default_factory=list, description="problemas de la revisión que NO se pueden arreglar solos (p. ej. subtítulos que tapan algo); vacío si arreglaste todo")
 
-    prompt = f"""Eres el editor jefe de un canal de TikTok/Shorts/Reels. Optimiza este clip YA GENERADO para que retenga más.
+    class Verify(BaseModel):
+        ok: bool = Field(description="true si todo está bien")
+        fix: str = Field(default="", description="si ok es false: tech | copy | both")
+        motivo: str = Field(default="", description="qué está mal, máx 120 caracteres")
+
+    probs_all = rv.get("problemas", []) if (rv and not rv.get("error")) else []
+    TECH_TYPES = {"inicio", "final", "contenido", "encuadre", "gancho"}
+    need_tech = not (rv and not rv.get("error")) or any(str(p.get("tipo")) in TECH_TYPES for p in probs_all)
+    pending = [f"{p.get('tipo', 'otro')}: {p.get('detalle', '')}"[:160] for p in probs_all if str(p.get("tipo")) not in TECH_TYPES]
+    tech_prompt = f"""Eres el editor técnico de un canal de TikTok/Shorts/Reels. Ajusta el CORTE de este clip YA GENERADO para que retenga más.
 Cada palabra aparece como [índice|segundo]palabra. » marca el inicio actual y « el final actual; hay contexto antes y después.
 
-Título actual: {c['title']}
-Gancho actual: {c.get('hook') or '(ninguno)'}
-Hashtags actuales: {' '.join(c.get('hashtags', []))}
 Duración actual: {dur:.1f} s
 
 {listing}
@@ -4042,23 +4084,94 @@ Haz esto:
 2. FINAL: que termine cuando la idea o la historia queda CERRADA, al final de una frase. NUNCA cortes mientras quien habla sigue
    explicando: si lo que se dice después completa la idea, inclúyelo. Si hay relleno ajeno al final, quítalo.
 3. Duración total (de start_word a end_word): entre {lo:.0f} y {hi:.0f} segundos.
-4. Título, gancho, descripción, hashtags y keywords nuevos y mejores, en el mismo idioma. Las keywords deben ser palabras que se dicen.
-5. Si el clip ya está bien, deja los mismos índices y mejora solo los textos.
+4. keywords: palabras que se dicen y conviene resaltar. layout solo si hay un problema de encuadre.
+5. Si el clip ya está bien, deja los mismos índices.
 En "cambios" explica brevemente qué mejoraste."""
-    progress(15, "La IA está optimizando el clip...")
-    r = ask_claude(prompt, Optim, o)
-    ns, ne = c["start"], c["end"]
-    if 0 <= r.start_word < r.end_word < len(words):
-        s2, e2 = max(0.0, words[r.start_word]["s"] - 0.1), words[r.end_word]["e"] + 0.35
-        if lo * 0.9 <= e2 - s2 <= hi * 1.05 and abs(s2 - c["start"]) <= 25 and abs(e2 - c["end"]) <= 30:
-            ns, ne = s2, e2
-    kws = [_norm(k) for kw in r.keywords for k in kw.split() if _norm(k)][:10]
-    tags = [h if h.startswith("#") else "#" + h for h in r.hashtags]
+
+    def run_tech(extra: str = ""):
+        t = ask_claude(tech_prompt + extra, Tech, o, role="tech")
+        cut = None
+        if 0 <= t.start_word < t.end_word < len(words):
+            s2, e2 = max(0.0, words[t.start_word]["s"] - 0.1), words[t.end_word]["e"] + 0.35
+            if lo * 0.9 <= e2 - s2 <= hi * 1.05 and abs(s2 - c["start"]) <= 25 and abs(e2 - c["end"]) <= 30:
+                cut = (s2, e2, t.start_word, t.end_word)
+        return t, cut
+
+    def cut_text(cut) -> str:
+        a, b = (cut[2], cut[3]) if cut else (a0, b0)
+        return " ".join(w["w"] for w in words[a:b + 1])
+
+    def run_copy(cut, extra: str = ""):
+        pr = f"""Eres el redactor de un canal de TikTok/Shorts/Reels. Escribe los textos de este clip, en el MISMO idioma del clip.
+Título actual: {c['title']}
+Gancho actual: {c.get('hook') or '(ninguno)'}
+Texto del clip:
+{cut_text(cut)}
+
+Escribe un título (máx 60 caracteres), un gancho (máx 7 palabras, que genere curiosidad y tenga sentido por sí solo),
+una descripción con una pregunta que invite a comentar y 3-6 hashtags. No inventes datos que no se dicen en el clip.{extra}"""
+        return ask_claude(pr, Copy, o, role="copy")
+
+    def run_verify(cut, kws_, cp):
+        n0, n1 = (cut[2], cut[3]) if cut else (a0, b0)
+        t_s, t_e = (cut[0], cut[1]) if cut else (c["start"], c["end"])
+        pr = f"""Eres el director de edición. Verifica este clip optimizado. Responde SOLO con el JSON pedido.
+Duración: {t_e - t_s:.0f} s (permitido {lo:.0f}-{hi:.0f}).
+Primeras 15 palabras: {' '.join(w['w'] for w in words[n0:n0 + 15])}
+Últimas 15 palabras: {' '.join(w['w'] for w in words[max(n0, n1 - 14):n1 + 1])}
+Lo que se dice justo después del corte: {' '.join(w['w'] for w in words[n1 + 1:n1 + 11])}
+Título: {cp.title}
+Gancho: {cp.hook}
+Descripción: {cp.caption}
+Hashtags: {' '.join(cp.hashtags)}
+Palabras clave: {', '.join(kws_)}
+Problemas que debía arreglar: {'; '.join(f"{p.get('tipo')}: {p.get('detalle', '')}"[:100] for p in probs_all) or '(ninguno)'}
+Comprueba: (1) empieza en el gancho, sin muletillas; (2) el final cierra la idea y lo de después no la completa;
+(3) título <= 60 caracteres y gancho <= 7 palabras con sentido; (4) las palabras clave aparecen en el clip; (5) cada problema está arreglado.
+ok=true si todo bien. Si no: fix = tech (corte), copy (textos) o both, y motivo breve (máx 120 caracteres)."""
+        return ask_claude(pr, Verify, o, role="verify")
+
+    can_verify = ai_backend() in ("cli", "api")
+    tech, cut, cp, fix, last_motivo, verified = None, None, None, "", "", None
+    for rnd in range(2):
+        if need_tech and (tech is None or fix in ("tech", "both")):
+            progress(15 + rnd * 20, "Sonnet está ajustando el corte..." if rnd == 0 else "Sonnet corrige el corte...")
+            t, cut_try = run_tech(f"\nCORRIGE: {last_motivo}" if (last_motivo and fix in ("tech", "both")) else "")
+            if cut_try is None and rnd == 0:     # corte no válido: un segundo intento, sin molestar a Opus
+                t, cut_try = run_tech("\nEl corte anterior NO es válido: respeta la duración y el máximo de desplazamiento.")
+            tech = t
+            if cut_try is not None:
+                cut = cut_try
+        if cp is None or fix in ("copy", "both"):
+            progress(20 + rnd * 20, "Haiku está escribiendo los textos..." if rnd == 0 else "Haiku corrige los textos...")
+            cp = run_copy(cut, f"\nCORRIGE: {last_motivo}" if (last_motivo and fix in ("copy", "both")) else "")
+        if not can_verify:
+            break
+        progress(28 + rnd * 20, "Opus está verificando el resultado...")
+        kws_now = [_norm(k) for kw in (tech.keywords if tech else c.get("keywords", [])) for k in kw.split() if _norm(k)][:10]
+        try:
+            v = run_verify(cut, kws_now, cp)
+        except Cancelled:
+            raise
+        except Exception:   # noqa: BLE001  (si Opus falla, se aplica igual sin verificar)
+            break
+        verified = bool(v.ok)
+        if v.ok:
+            break
+        fix, last_motivo = (v.fix if v.fix in ("tech", "copy", "both") else "both"), v.motivo.strip()[:120]
+    if verified is False and last_motivo:
+        pending.append(f"Opus: {last_motivo}")
+    ns, ne = (cut[0], cut[1]) if cut else (c["start"], c["end"])
+    kws = [_norm(k) for kw in (tech.keywords if tech else []) for k in kw.split() if _norm(k)][:10]
+    tags = [h if h.startswith("#") else "#" + h for h in cp.hashtags]
+    cambios = list(tech.cambios) if tech else ["Se mejoraron los textos (el corte ya estaba bien)."]
+    pending += list(tech.no_resuelto) if tech else []
+    cambios.append("Sonnet: corte · Haiku: textos · " + ("Opus verificó." if verified else "sin verificación de Opus."))
     prev = {k: c.get(k) for k in _OPT_FIELDS}
     prev["layout"] = data["layout"]
-    layout_new = r.layout.strip() if r.layout.strip() in ("auto", "speaker", "wide", "track", "blur", "gaming", "gamecenter", "split") else ""
+    layout_new = tech.layout.strip() if (tech and tech.layout.strip() in ("auto", "speaker", "wide", "track", "blur", "gaming", "gamecenter", "split")) else ""
     layout_changed = bool(layout_new) and layout_new != data["layout"]
-    new = {"start": ns, "end": ne, "title": r.title.strip() or c["title"], "hook": r.hook.strip(), "caption": r.caption.strip() or c.get("caption", ""),
+    new = {"start": ns, "end": ne, "title": cp.title.strip() or c["title"], "hook": cp.hook.strip(), "caption": cp.caption.strip() or c.get("caption", ""),
            "hashtags": tags or c.get("hashtags", []), "keywords": kws or c.get("keywords", [])}
     need_render = (abs(ns - c["start"]) > 0.15 or abs(ne - c["end"]) > 0.15 or new["hook"] != (c.get("hook") or "")
                    or set(new["keywords"]) != set(c.get("keywords") or []) or layout_changed)
@@ -4070,12 +4183,12 @@ En "cambios" explica brevemente qué mejoraste."""
         rerender_clip(workdir, index, edits, lambda p, m: progress(30 + p * 0.68, m))
     else:
         update_clip_meta(workdir, index, new)
-    note = list(r.cambios)[:6]
+    note = list(cambios)[:7]
     if layout_changed:
         note.insert(0, f"Encuadre: de «{data['layout']}» a «{layout_new}».")
     if abs(ns - c["start"]) > 0.15 or abs(ne - c["end"]) > 0.15:
         note.insert(0, f"Corte: de {c['start']:.1f}–{c['end']:.1f} s a {ns:.1f}–{ne:.1f} s ({ne - ns:.0f} s en total).")
-    out = _set_clip_fields(workdir, index, {"opt_prev": prev, "opt_note": note, "opt_pending": list(r.no_resuelto)[:5] or None, "optimized": True})
+    out = _set_clip_fields(workdir, index, {"opt_prev": prev, "opt_note": note, "opt_pending": pending[:5] or None, "optimized": True})
     # Se vuelve a revisar el clip ya arreglado: las recomendaciones de abajo se actualizan (si el problema se arregló, desaparece)
     if need_render or rv:   # Optimizar siempre vuelve a revisar con la IA, aunque la revisión automática esté apagada
         try:

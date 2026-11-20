@@ -402,9 +402,9 @@
     "semantic_hash": ""
   },
   "pipeline.py": {
-    "mtime": 1795200284.2430813,
-    "seen": 1795200286.2552605,
-    "ast_hash": "237d0416cd6e7774ee7225a9417ba7ef",
+    "mtime": 1795200722.1756065,
+    "seen": 1795200749.4395614,
+    "ast_hash": "cd2d46eb898e902ecc22dafdd72ad4ce",
     "semantic_hash": ""
   },
   "scripts/gen_map.py": {
@@ -462,9 +462,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795144943.7524896,
-    "seen": 1795200250.7820828,
-    "ast_hash": "4e8b1aa4088dc41c6f960aacc2765e72",
+    "mtime": 1795200747.1911087,
+    "seen": 1795200749.439578,
+    "ast_hash": "707ed33f242d10c9e892d10e6ed4c487",
     "semantic_hash": ""
   },
   "docs/MAP.md": {
@@ -573,6 +573,12 @@
     "mtime": 1795144943.7644894,
     "seen": 1795200250.7820706,
     "ast_hash": "a607c93631403ae672f77a5701f3d12a",
+    "semantic_hash": ""
+  },
+  "tests/test_optimize_roles.py": {
+    "mtime": 1795200739.3166895,
+    "seen": 1795200749.4395702,
+    "ast_hash": "6de1a0c9d62567c06f40e3963c3488bd",
     "semantic_hash": ""
   },
   "frontend/package-lock.json": {
