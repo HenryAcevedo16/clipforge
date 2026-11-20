@@ -76,6 +76,7 @@ export interface ClipResult {
   end: number;
   title: string;
   hook: string;
+  hook_quote?: string; // cita literal extraída de la transcripción para validar el gancho hablado
   score: number; // 0-100 (virality_score)
   reason: string;
   caption: string;
