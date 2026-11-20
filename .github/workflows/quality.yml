@@ -43,3 +43,5 @@ jobs:
       - run: npm ci
       - name: Type-check frontend
         run: npm run typecheck
+      - name: Build static frontend
+        run: npm run build
