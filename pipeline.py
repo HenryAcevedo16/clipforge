@@ -240,9 +240,16 @@ class Clip:
 
 
 def _spoken_quote(words: list, start: float, window: float = 4.0, limit: int = 7) -> str:
-    """Devuelve una cita contigua de palabras reales de la transcripción, desde un tiempo fuente."""
-    picked = sorted((w for w in words if start - 0.05 <= float(w.get("s", -1)) <= start + window), key=lambda w: w["s"])
-    return " ".join(str(w.get("w", "")).strip() for w in picked[:limit] if str(w.get("w", "")).strip())
+    """Devuelve un extracto contiguo de palabras reales de la transcripción, desde un tiempo fuente."""
+    picked = sorted((w for w in words if start - 0.05 <= float(w.get("s", -1)) <= start + window), key=lambda w: float(w["s"]))
+    contiguous = []
+    for word in picked:
+        if contiguous and float(word["s"]) - float(contiguous[-1].get("e", contiguous[-1]["s"])) > 0.85:
+            break
+        contiguous.append(word)
+        if len(contiguous) >= limit:
+            break
+    return " ".join(str(w.get("w", "")).strip() for w in contiguous if str(w.get("w", "")).strip())
 
 
 # --------------------------------------------------------------------------- #
