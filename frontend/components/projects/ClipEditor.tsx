@@ -1,5 +1,5 @@
 "use client";
-import { AudioLines, Check, Eraser, Highlighter, Sparkles, Loader2, Scissors, SpellCheck, Trash2 } from "lucide-react";
+import { AudioLines, Check, Eraser, Highlighter, Sparkles, Loader2, Scissors, SpellCheck, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { waitJob } from "@/lib/api/wait";
 import { api, ApiError, type ClipEditData, type ClipToggles, type EditWord } from "@/lib/api";
@@ -234,6 +234,24 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
     }
   };
 
+  const revertOptimization = async () => {
+    setBusy(true);
+    setPct(0);
+    setMsg("Restaurando la versión anterior…");
+    try {
+      const { id } = await api.revertClip(jobId, index);
+      await waitJob(id, (p, m) => { setPct(p); setMsg(m); }, () => alive.current);
+      if (!alive.current) return;
+      fill(await api.getClipEdit(jobId, index));
+      onChanged();
+      toast("Se restauró la versión anterior del clip.");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "No se pudo restaurar el clip.", "bad");
+    } finally {
+      if (alive.current) setBusy(false);
+    }
+  };
+
   const applyInstruction = async () => {
     const instruction = aiInstruction.trim();
     if (!instruction) return toast("Escribe qué quieres cambiar.", "bad");
@@ -296,6 +314,11 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
             <Button variant="danger" onClick={remove} icon={<Trash2 className="size-4" aria-hidden />} disabled={busy}>
               {confirmDel ? "¿Seguro? Pulsa otra vez" : "Eliminar clip"}
             </Button>
+            {data.clip.optimized && data.clip.opt_prev && (
+              <Button onClick={revertOptimization} disabled={busy} icon={<Undo2 className="size-4" aria-hidden />}>
+                Restaurar versión anterior
+              </Button>
+            )}
             <Button onClick={optimize} disabled={busy} icon={<Sparkles className="size-4" aria-hidden />}>
               Optimizar con IA
             </Button>
