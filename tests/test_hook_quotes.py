@@ -2,7 +2,7 @@
 
 import unittest
 
-from pipeline import _spoken_quote
+from pipeline import _line_features, _spoken_quote
 
 
 class SpokenQuoteTests(unittest.TestCase):
@@ -28,6 +28,16 @@ class SpokenQuoteTests(unittest.TestCase):
     def test_returns_empty_when_no_transcribed_words_near_start(self):
         words = [{"w": "lejos", "s": 20.0, "e": 20.4}]
         self.assertEqual(_spoken_quote(words, 0.0), "")
+
+
+class NarrativeFeatureTests(unittest.TestCase):
+    def test_detects_an_open_ending(self):
+        features = _line_features([{"text": "Y esto pasa porque"}], [0.0])
+        self.assertEqual(features[0]["open_end"], 1)
+
+    def test_accepts_a_closed_sentence(self):
+        features = _line_features([{"text": "Y esto pasa."}], [0.0])
+        self.assertEqual(features[0]["open_end"], 0)
 
 
 if __name__ == "__main__":
