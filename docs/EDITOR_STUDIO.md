@@ -33,6 +33,6 @@
 El servidor FastAPI sirve la carpeta compilada `web/`; editar `frontend/` no cambia por sí solo la interfaz que se abre en localhost.
 
 - Windows: ejecuta `build_frontend.bat`.
-- Mac/Linux: ejecuta `./build_frontend.sh`.
+- Mac/Linux: ejecuta `bash build_frontend.sh`.
 
 Después reinicia NovoClip y recarga el navegador con Ctrl+F5. Estos scripts compilan el frontend estático y copian el resultado a `web/`.
