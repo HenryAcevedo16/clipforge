@@ -222,6 +222,7 @@ class Clip:
     end: float
     title: str
     hook: str = ""
+    hook_quote: str = ""  # cita literal tomada de la transcripción, no texto inventado por la IA
     score: float = 0.0
     reason: str = ""
     caption: str = ""
@@ -1663,13 +1664,13 @@ Reglas:
 
     def blend(c) -> int:
         """Nota final: la global de la IA mezclada con sus notas parciales (así una nota global inflada no manda sola)."""
-        q = 0.30 * c.gancho + 0.20 * c.emocion + 0.15 * c.valor + 0.20 * c.autonomia + 0.15 * c.remate
+        q = 0.25 * c.gancho + 0.15 * c.emocion + 0.15 * c.valor + 0.25 * c.autonomia + 0.20 * c.remate
         return int(round(0.5 * c.virality_score + 5.0 * q))
 
     ranked = sorted(result.clips, key=lambda x: -blend(x))
     # un clip "sin sentido" casi siempre tiene poca autonomía, no cierra o no engancha: se descartan primero
-    strict = [c for c in ranked if c.autonomia >= 6 and c.remate >= 5 and c.gancho >= 5]
-    pool = strict if strict else ranked
+    strict = [c for c in ranked if c.autonomia >= 7 and c.remate >= 6 and c.gancho >= 6]
+    pool = strict  # si ningún candidato supera la puerta narrativa, el selector local toma el relevo
     for c in pool:
         i = max(0, min(c.start_line, len(lines) - 1))
         j = max(i, min(c.end_line, len(lines) - 1))
@@ -1693,8 +1694,11 @@ Reglas:
                     if opts.min_len * 0.85 <= rng[1] - cand[k]["s"] <= opts.max_len * 1.15:
                         start_t = cand[k]["s"]
                     break
+        quote_words = [w for line in lines[i:j + 1] for w in line.get("words", [])
+                       if w["s"] >= start_t - 0.05 and w["s"] <= start_t + 4.0]
+        hook_quote = " ".join(w["w"] for w in quote_words[:7])
         clips.append(Clip(index=len(clips) + 1, start=max(0, start_t - 0.1), end=rng[1] + 0.35,
-                          title=c.title, hook=c.hook, score=blend(c), reason=c.reason,
+                          title=c.title, hook=c.hook, hook_quote=hook_quote, score=blend(c), reason=c.reason,
                           caption=c.caption, hashtags=[h if h.startswith("#") else "#" + h for h in c.hashtags],
                           keywords=kws[:10]))
         if len(clips) >= want:
@@ -3471,7 +3475,9 @@ def manual_clips(tr: dict, ranges: list, opts: Options, video_title: str = "") -
         txt = " ".join(w["w"] for w in words if w["s"] >= a - 0.05 and w["e"] <= b + 0.05).strip()
         texts.append(txt)
         first = " ".join(txt.split()[:8]) or f"Clip {i}"
-        clips.append(Clip(index=i, start=a, end=b, title=first[:60], hook=" ".join(txt.split()[:6]).upper(), score=60.0,
+        spoken = [w for w in words if w["s"] >= a - 0.05 and w["e"] <= b + 0.05]
+        hook_quote = " ".join(w["w"] for w in spoken[:7])
+        clips.append(Clip(index=i, start=a, end=b, title=first[:60], hook=" ".join(txt.split()[:6]).upper(), hook_quote=hook_quote, score=60.0,
                           caption=first, hashtags=["#shorts", "#viral", "#fyp"], keywords=_auto_keywords(txt)))
     if not (opts.use_ai and ai_backend()) or not any(texts):
         return clips
