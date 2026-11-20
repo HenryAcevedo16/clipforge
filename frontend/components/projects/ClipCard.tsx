@@ -36,7 +36,7 @@ export function ReviewPanel({ review }: { review: ClipResult["review"] }) {
     );
   }
   if (!isReview(review)) {
-    return <p className="rounded-2xl border border-dashed border-line-2 px-4 py-3 text-sm text-ink-3">Este clip se eligió gratis, sin IA. Pulsa «Optimizar con IA» para que Claude lo revise y lo mejore.</p>;
+    return <p className="rounded-2xl border border-dashed border-line-2 px-4 py-3 text-sm text-ink-3">Este clip se eligió sin revisión de IA. Pulsa «Optimizar con IA» para que el proveedor configurado lo revise y lo mejore.</p>;
   }
   const items = review.problemas.length + review.sugerencias.length;
   // El veredicto sigue a la nota: lo que la IA llama "aprobado" no puede contradecir un 0 en rojo.
@@ -191,7 +191,7 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3.5 p-4 sm:p-5">
         <div className="flex items-start gap-3">
-          <span className="brand-bg num grid size-11 shrink-0 place-items-center rounded-2xl text-xl text-white" title="Potencial viral" aria-label={`Potencial viral: ${Math.round(c.score)}`}>
+          <span className="brand-bg num grid size-11 shrink-0 place-items-center rounded-2xl text-xl text-white" title="Puntuación editorial" aria-label={`Puntuación editorial: ${Math.round(c.score)}`}>
             {Math.round(c.score)}
           </span>
           <div className="min-w-0">
@@ -211,7 +211,7 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
             </h3>
             )}
             <p className="mt-0.5 text-sm text-ink-3">
-              Potencial viral · {formatDuration(c.start)}–{formatDuration(c.end)} del video
+              Puntuación editorial · {formatDuration(c.start)}–{formatDuration(c.end)} del video
             </p>
             {c.reason && <p className="mt-1 text-xs leading-relaxed text-ink-3">{c.reason}</p>}
           </div>
