@@ -186,6 +186,7 @@ export interface EditWord {
 export interface ClipEditData {
   clip: ClipResult;
   words: EditWord[];
+  waveform?: number[]; // picos normalizados del audio original para la línea de tiempo
   editable: boolean;
   layout: string;
   caption_style: string;
