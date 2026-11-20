@@ -252,6 +252,32 @@ def _spoken_quote(words: list, start: float, window: float = 4.0, limit: int = 7
     return " ".join(str(w.get("w", "")).strip() for w in contiguous if str(w.get("w", "")).strip())
 
 
+def _audio_waveform(src: Optional[Path], start: float, end: float, bins: int = 64) -> list[float]:
+    """Calcula picos RMS absolutos del audio original para una forma de onda compacta del editor."""
+    if src is None or not src.is_file() or end <= start or bins < 1:
+        return []
+    try:
+        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", f"{max(0.0, start):.3f}",
+               "-i", str(src), "-t", f"{end - start:.3f}", "-vn", "-ac", "1", "-ar", "4000",
+               "-f", "f32le", "pipe:1"]
+        result = _sp_run(cmd, capture_output=True, timeout=25)
+        if result.returncode != 0 or not result.stdout:
+            return []
+        samples = np.frombuffer(result.stdout, dtype=np.float32)
+        if not samples.size:
+            return []
+        width = max(1, math.ceil(samples.size / bins))
+        peaks = [float(np.sqrt(np.mean(np.square(samples[i:i + width], dtype=np.float64))))
+                 for i in range(0, samples.size, width)]
+        peak = max(peaks, default=0.0)
+        if peak <= 1e-8:
+            return [0.0] * min(bins, len(peaks))
+        normalized = [round(min(1.0, value / peak), 4) for value in peaks[:bins]]
+        return normalized + [0.0] * (bins - len(normalized))
+    except Exception:
+        return []
+
+
 # --------------------------------------------------------------------------- #
 # Utilidades
 # --------------------------------------------------------------------------- #
@@ -3785,7 +3811,10 @@ def load_clip_for_edit(workdir: Path, index: int) -> dict:
                 break
     job = _job_info(workdir)
     o = job.get("opts", {})
-    return {"clip": c, "words": words, "editable": bool(job) and (not res.get("live") or _live_src(workdir, index) is not None),
+    source = _local_video(workdir, job) if job else None
+    waveform = _audio_waveform(source, float(c["start"]), float(c["end"]))
+    return {"clip": c, "words": words, "waveform": waveform,
+            "editable": bool(job) and (not res.get("live") or _live_src(workdir, index) is not None),
             "layout": c.get("edit_layout") or o.get("layout", "auto"),
             "caption_style": c.get("edit_style") or o.get("caption_style", "viral"),
             "styles": list(STYLES) + ["none"],
