@@ -413,8 +413,8 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
                         />
                       </button>
                     ))}
-                    <div className="pointer-events-none absolute inset-y-0 border-l-2 border-ok" style={{ left: `calc(8px + (100% - 16px) * ${Math.max(0, Math.min(1, (start - lo) / Math.max(0.1, hi - lo)))})` }} />
-                    <div className="pointer-events-none absolute inset-y-0 border-l-2 border-bad" style={{ left: `calc(8px + (100% - 16px) * ${Math.max(0, Math.min(1, (end - lo) / Math.max(0.1, hi - lo)))})` }} />
+                    <div className="pointer-events-none absolute inset-y-0 border-l-2 border-ok" style={{ left: `${Math.max(0, Math.min(1, (start - lo) / Math.max(0.1, hi - lo))) * 100}%` }} />
+                    <div className="pointer-events-none absolute inset-y-0 border-l-2 border-bad" style={{ left: `${Math.max(0, Math.min(1, (end - lo) / Math.max(0.1, hi - lo))) * 100}%` }} />
                   </div>
                   <div className="mt-2 flex items-center justify-between text-[11px] font-medium tabular-nums text-ink-3">
                     <span>{sec(lo)}</span>
