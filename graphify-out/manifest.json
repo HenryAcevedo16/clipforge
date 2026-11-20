@@ -12,9 +12,9 @@
     "semantic_hash": ""
   },
   "app.py": {
-    "mtime": 1795086660.6948452,
-    "seen": 1795086669.3268263,
-    "ast_hash": "110b0be2016e3de671a4ba9ec5d3659d",
+    "mtime": 1795144943.7524896,
+    "seen": 1795200250.7819355,
+    "ast_hash": "217462f62e63d6fe984d987c496e5886",
     "semantic_hash": ""
   },
   "frontend/app/ajustes/page.tsx": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "frontend/components/home/HomeFlow.tsx": {
-    "mtime": 1795093819.8395429,
-    "seen": 1795093922.0201232,
-    "ast_hash": "7677c5fcff368b2210083901abc6d816",
+    "mtime": 1795144943.7524896,
+    "seen": 1795200250.781972,
+    "ast_hash": "2c6069831f6bd76dbdc24bb1a4c856ee",
     "semantic_hash": ""
   },
   "frontend/components/home/RecentProjects.tsx": {
@@ -126,9 +126,9 @@
     "semantic_hash": ""
   },
   "frontend/components/projects/ClipCard.tsx": {
-    "mtime": 1795093397.6832533,
-    "seen": 1795093922.0201309,
-    "ast_hash": "e29bfb2e6ac57a1d0f58f78d3346f7c8",
+    "mtime": 1795144943.7564895,
+    "seen": 1795200250.7819803,
+    "ast_hash": "677ef34af5fb814d68bc885fa9da0b57",
     "semantic_hash": ""
   },
   "frontend/components/projects/ClipEditor.tsx": {
@@ -402,9 +402,9 @@
     "semantic_hash": ""
   },
   "pipeline.py": {
-    "mtime": 1795144872.6372883,
-    "seen": 1795144939.382045,
-    "ast_hash": "f8d21f8f58956b3626ae6c1b0652e774",
+    "mtime": 1795200092.2370267,
+    "seen": 1795200250.7820594,
+    "ast_hash": "237d0416cd6e7774ee7225a9417ba7ef",
     "semantic_hash": ""
   },
   "scripts/gen_map.py": {
@@ -462,9 +462,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795093922.1423912,
-    "seen": 1795144939.3820677,
-    "ast_hash": "da90b2bcc52130a1ae4c91ca0cecfadc",
+    "mtime": 1795144943.7524896,
+    "seen": 1795200250.7820828,
+    "ast_hash": "4e8b1aa4088dc41c6f960aacc2765e72",
     "semantic_hash": ""
   },
   "docs/MAP.md": {
@@ -555,6 +555,24 @@
     "mtime": 1795093397.443581,
     "seen": 1795093922.0202117,
     "ast_hash": "e5de3f9b03e1be97a70e80a035324cdd",
+    "semantic_hash": ""
+  },
+  "novoclip_signals.py": {
+    "mtime": 1795144943.7604895,
+    "seen": 1795200250.7820578,
+    "ast_hash": "9e491f0586e51fe6b2fab39a167f7bf7",
+    "semantic_hash": ""
+  },
+  "tests/test_clip_editing.py": {
+    "mtime": 1795200124.0538087,
+    "seen": 1795200250.7820685,
+    "ast_hash": "f8094e7bc41ffcbf713e41446efaf2d6",
+    "semantic_hash": ""
+  },
+  "tests/test_novoclip_signals.py": {
+    "mtime": 1795144943.7644894,
+    "seen": 1795200250.7820706,
+    "ast_hash": "a607c93631403ae672f77a5701f3d12a",
     "semantic_hash": ""
   },
   "frontend/package-lock.json": {

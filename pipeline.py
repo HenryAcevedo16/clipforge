@@ -1076,24 +1076,21 @@ def _best_hook(lines: list, feats: list, i: int, j: int, max_words: int = 7) -> 
             break
         f = feats[k]
         sc = 6 * f["hook"] + 3 * f["kw"] + 3 * f["punct"] + 2 * f["nums"] + 3 * f["laugh"] + 4 * f["complete"] \
-            - 8 * f["weak_start"] - 1.5 * k_gap(k, i) - 30 * f["cta"]
+            - 8 * f["weak_start"] - 1.5 * (k - i) - 30 * f["cta"]
         if sc > best_sc:
             best, best_sc = k, sc
     words = lines[best]["text"].split() if best is not None else lines[i]["text"].split()
-    while len(words) > 3 and _norm(words[0]) in FILLER_START:        # "pues, entonces..." al inicio
+    while len(words) > 1 and _norm(words[0]) in FILLER_START:        # "pues, entonces..." al inicio
         words = words[1:]
-    q = [k for k, w in enumerate(words[:max_words + 2]) if w.endswith(("?", "!"))]   # corta en la primera pregunta/exclamación
-    if q and q[0] < max_words:
-        words = words[: q[0] + 1]
-    else:
-        words = words[:max_words]
-    while len(words) > 3 and _norm(words[-1]) in HOOK_TAIL:           # no terminar en "de", "que", "y"...
+    q = [k for k, w in enumerate(words[:max_words]) if w.endswith(("?", "!"))]   # corta en la primera pregunta/exclamación
+    words = words[: q[0] + 1] if q else words[:max_words]
+    while len(words) > 1 and _norm(words[-1]) in HOOK_TAIL:           # no terminar en "de", "que", "y"...
         words = words[:-1]
-    return " ".join(words).strip(" ,;:.-")
-
-
-def k_gap(k: int, i: int) -> int:
-    return k - i                                                      # prefiere ganchos que aparecen pronto
+    text = " ".join(words).strip(" ,;:.-")
+    for opening, closing in (("¿", "?"), ("¡", "!")):                 # sin signos de apertura huérfanos
+        if opening in text and closing not in text:
+            text = text.replace(opening, "")
+    return text
 
 
 def _overlaps(a, b, gap=1.0) -> bool:
@@ -3653,7 +3650,7 @@ def process(source: str, workdir: Path, opts: Options, progress: ProgressFn = _n
             if w and not warned["res"]:
                 warned["res"] = True
                 progress(45, w)
-            if abs(m["duration"] - (b - a)) > 3.0 or not m["has_audio"]:   # el corte no salió exacto
+            if m["duration"] < (c.end - a) - 0.5 or m["duration"] > (b - a) + 3.0 or not m["has_audio"]:   # el trozo no cubre el clip
                 return None
             return f, a, m
         except Cancelled:
@@ -3880,11 +3877,22 @@ def rerender_clip(workdir: Path, index: int, edits: dict, progress: ProgressFn =
     src = None if res.get("live") else _local_video(workdir, job)
     part, off = None, 0.0
     if src is None and live:
-        src = live[0]
-        off = live[1]
-        c.start, c.end = max(c.start, off), min(c.end, off + live[2])   # solo hay video dentro del trozo guardado
-        if c.end - c.start < 1.0:
-            raise RuntimeError("Ese rango queda fuera del video guardado de este clip.")
+        src, off, kept_end = live[0], live[1], live[1] + live[2]
+        url = job.get("source") or ""
+        if not res.get("live") and (c.start < off - 0.05 or c.end > kept_end + 0.05) and re.match(r"^https?://", url):
+            try:    # el rango pedido sale del video guardado: se intenta bajar el trozo que falta
+                a, b = max(0.0, c.start - 1.5), c.end + 1.5
+                progress(10, f"Descargando solo el trozo del clip ({c.end - c.start:.0f} s)...")
+                part, _ = download(url, workdir, o, progress, section=(a, b), stem=f"editar_{int(index):02d}",
+                                   label="Descargando el trozo del clip...")
+                src, off = part, a
+            except Exception:   # noqa: BLE001  (Cancelled es BaseException y sigue de largo)
+                part = None
+                progress(10, f"Solo hay video guardado hasta {kept_end:.0f} s; recorto el clip a ese tramo.")
+        if part is None:    # solo hay video dentro del trozo guardado
+            c.start, c.end = max(c.start, off), min(c.end, kept_end)
+            if c.end - c.start < 1.0:
+                raise RuntimeError("Ese rango queda fuera del video guardado de este clip.")
     elif src is None:
         url = job.get("source") or ""
         if not re.match(r"^https?://", url):
@@ -4423,7 +4431,10 @@ def _keep_clip_source(workdir: Path, c: Clip, part: Path, off: float, meta: dict
         (d / f"{c.index:02d}.json").write_text(json.dumps({"off": round(off, 3), "dur": round(float(meta["duration"]), 3),
                                                            "file": dest.name}))
     except Exception:
-        part.unlink(missing_ok=True)
+        try:
+            part.unlink(missing_ok=True)
+        except OSError:
+            pass   # en Windows el archivo puede seguir en uso; no debe tapar el error de render
 
 
 def _live_src(workdir: Path, index: int) -> Optional[tuple]:
