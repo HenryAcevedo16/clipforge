@@ -184,8 +184,8 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
   };
 
   return (
-    <Card className="min-w-0 flex-col gap-0 overflow-hidden border border-line p-0 sm:flex-row" aria-label={`Clip ${c.index}: ${c.title}`}>
-      <div className="relative shrink-0 bg-black sm:w-[15rem]">
+    <Card className="min-w-0 flex-col gap-0 overflow-hidden border border-line/80 bg-gradient-to-br from-surface to-surface-secondary p-0 shadow-[0_18px_55px_-38px_rgb(0_0_0/0.9)] transition-[border-color,transform,box-shadow] duration-200 hover:border-accent/35 sm:flex-row" aria-label={`Clip ${c.index}: ${c.title}`}>
+      <div className="relative shrink-0 bg-black sm:w-[16rem]">
         <video key={c.file + rev} src={`${api.fileUrl(jobId, c.file)}${rev ? `?v=${rev}` : ""}`} poster={c.thumb ? `${api.fileUrl(jobId, c.thumb)}${rev ? `?v=${rev}` : ""}` : undefined} controls playsInline preload="metadata" className="mx-auto block aspect-[9/16] max-h-[26rem] w-full bg-black object-contain sm:max-h-none sm:h-full" aria-label={`Reproducir clip ${c.index}`} />
         <span className="tnum pointer-events-none absolute left-2.5 top-2.5 rounded-lg bg-black/70 px-2 py-0.5 text-sm font-bold text-white">{formatDuration(c.duration)}</span>
       </div>
@@ -249,6 +249,13 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
               )}
             </p>
           )
+        )}
+        {c.hook_quote && (
+          <div className="clip-quote rounded-2xl px-3.5 py-3">
+            <p className="mb-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-accent-hi">Lo que realmente dice</p>
+            <p className="text-sm font-semibold leading-relaxed text-ink-2">“{c.hook_quote}”</p>
+            <p className="mt-1 text-[11px] text-ink-3">Cita tomada de la transcripción del video</p>
+          </div>
         )}
         {c.hashtags.length > 0 && (
           <ul className="flex max-h-[4.5rem] flex-wrap gap-1.5 overflow-hidden" aria-label="Hashtags">
