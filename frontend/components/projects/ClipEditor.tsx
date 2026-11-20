@@ -255,6 +255,7 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
   const applyInstruction = async () => {
     const instruction = aiInstruction.trim();
     if (!instruction) return toast("Escribe qué quieres cambiar.", "bad");
+    if (pendingEdits) return toast("Primero pulsa «Volver a generar» para guardar tus cambios manuales.", "bad");
     setBusy(true);
     setPct(0);
     setMsg("La IA está aplicando tus instrucciones…");
@@ -301,6 +302,22 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
 
   const videoSrc = data ? `${api.fileUrl(jobId, data.clip.file)}${data.clip.rev ? `?v=${data.clip.rev}` : ""}` : "";
   const changed = data && (Math.abs(start - orig[0]) > 0.01 || Math.abs(end - orig[1]) > 0.01);
+  const savedToggles = { ...TOGGLE_DEFAULTS, ...(data?.toggles ?? {}) };
+  const pendingEdits = !!data && (
+    Math.abs(start - data.clip.start) > 0.01 ||
+    Math.abs(end - data.clip.end) > 0.01 ||
+    title !== data.clip.title ||
+    hook !== data.clip.hook ||
+    caption !== data.clip.caption ||
+    tags !== data.clip.hashtags.join(" ") ||
+    layout !== data.layout ||
+    (capOn ? style : "none") !== data.caption_style ||
+    showHook !== (data.show_hook !== false && !!data.clip.hook) ||
+    [...kws].sort().join("|") !== [...(data.clip.keywords ?? [])].sort().join("|") ||
+    words.length !== data.words.length ||
+    words.some((w, i) => w.w !== data.words[i]?.w || w.s !== data.words[i]?.s || w.e !== data.words[i]?.e) ||
+    (Object.keys(TOGGLE_DEFAULTS) as (keyof ClipToggles)[]).some((key) => tg[key] !== savedToggles[key])
+  );
 
   return (
     <Dialog
@@ -507,8 +524,8 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
             </div>
             <textarea value={aiInstruction} onChange={(e) => setAiInstruction(e.target.value)} maxLength={1200} rows={3} disabled={busy} placeholder="Ej.: empieza justo cuando dice «te voy a contar algo», elimina la pausa del principio, conserva el final completo y crea un gancho más curioso sin inventar frases." className={cn(inputClass, "min-h-24 resize-y py-3")} aria-label="Instrucciones para editar el clip con IA" />
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-[11px] text-ink-3">{aiInstruction.length}/1200 · Requiere una IA activa en Ajustes</span>
-              <Button variant="primary" size="sm" onClick={applyInstruction} disabled={busy || !aiInstruction.trim()} icon={<Sparkles className="size-4" aria-hidden />}>Aplicar instrucciones</Button>
+              <span className="text-[11px] text-ink-3">{pendingEdits ? "Guarda primero los cambios manuales con «Volver a generar»." : `${aiInstruction.length}/1200 · Requiere una IA activa en Ajustes`}</span>
+              <Button variant="primary" size="sm" onClick={applyInstruction} disabled={busy || pendingEdits || !aiInstruction.trim()} icon={<Sparkles className="size-4" aria-hidden />}>Aplicar instrucciones</Button>
             </div>
           </section>
           <div className="grid gap-4 sm:grid-cols-2">
