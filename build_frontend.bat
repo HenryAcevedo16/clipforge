@@ -8,10 +8,8 @@ where npm >nul 2>nul || (echo No se encontro npm. Reinstala Node.js incluyendo n
 echo.
 echo [1/3] Preparando dependencias del frontend...
 pushd frontend
-if not exist node_modules (
-  call npm ci
-  if errorlevel 1 (popd & echo Error instalando dependencias. & pause & exit /b 1)
-)
+call npm ci
+if errorlevel 1 (popd & echo Error instalando dependencias. & pause & exit /b 1)
 
 echo.
 echo [2/3] Compilando NovoClip Studio...
