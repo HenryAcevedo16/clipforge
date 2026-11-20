@@ -1063,6 +1063,39 @@ def _window_score(lines, feats, i, j, rate_mu, target) -> tuple[float, str]:
     return score, ", ".join(reasons) or "segmento coherente"
 
 
+HOOK_TAIL = {"de", "que", "y", "o", "a", "en", "con", "por", "para", "la", "el", "los", "las", "un", "una", "del", "al",
+             "se", "me", "te", "lo", "su", "mi", "pero", "como", "si", "and", "the", "to", "of", "in", "is", "but"}
+
+
+def _best_hook(lines: list, feats: list, i: int, j: int, max_words: int = 7) -> str:
+    """Frase corta con sentido para el gancho: la línea con más fuerza (pregunta, número, palabra clave, risa)
+    de los primeros ~25 s del clip, sin conectores al inicio ni al final, cortada en un límite natural."""
+    t0, best, best_sc = lines[i]["s"], None, -1e9
+    for k in range(i, j + 1):
+        if lines[k]["s"] - t0 > 25:
+            break
+        f = feats[k]
+        sc = 6 * f["hook"] + 3 * f["kw"] + 3 * f["punct"] + 2 * f["nums"] + 3 * f["laugh"] + 4 * f["complete"] \
+            - 8 * f["weak_start"] - 1.5 * k_gap(k, i) - 30 * f["cta"]
+        if sc > best_sc:
+            best, best_sc = k, sc
+    words = lines[best]["text"].split() if best is not None else lines[i]["text"].split()
+    while len(words) > 3 and _norm(words[0]) in FILLER_START:        # "pues, entonces..." al inicio
+        words = words[1:]
+    q = [k for k, w in enumerate(words[:max_words + 2]) if w.endswith(("?", "!"))]   # corta en la primera pregunta/exclamación
+    if q and q[0] < max_words:
+        words = words[: q[0] + 1]
+    else:
+        words = words[:max_words]
+    while len(words) > 3 and _norm(words[-1]) in HOOK_TAIL:           # no terminar en "de", "que", "y"...
+        words = words[:-1]
+    return " ".join(words).strip(" ,;:.-")
+
+
+def k_gap(k: int, i: int) -> int:
+    return k - i                                                      # prefiere ganchos que aparecen pronto
+
+
 def _overlaps(a, b, gap=1.0) -> bool:
     return not (a[1] + gap <= b[0] or b[1] + gap <= a[0])
 
@@ -1138,15 +1171,14 @@ def select_heuristic(src: Path, tr: dict, opts: Options) -> list[Clip]:
         if len(picked) >= opts.num_clips:
             break
 
-    hi, lo = max(p[0] for p in picked), min(p[0] for p in picked)
     clips = []
     for k, (sc, s, e, i, j, why) in enumerate(sorted(picked, key=lambda p: -p[0])):
-        first = lines[i]["text"]
-        title = " ".join(first.split()[:9]).rstrip(",.;:")
+        hook = _best_hook(lines, feats, i, j) or " ".join(lines[i]["text"].split()[:6])
+        title = hook[:1].upper() + hook[1:]
         text = " ".join(l["text"] for l in lines[i : j + 1])
-        norm = 70 + 25 * ((sc - lo) / (hi - lo) if hi > lo else 1)
+        norm = max(0, min(100, 25 + 0.9 * sc))    # nota absoluta: un video flojo da notas bajas, uno muy bueno notas altas
         clips.append(Clip(index=k + 1, start=max(0, _trim_start(lines[i]) - 0.1), end=e + 0.35, title=title,
-                          hook=" ".join(first.split()[:6]).upper(), score=round(norm),
+                          hook=hook.upper(), score=round(norm),
                           reason=why, caption=title, hashtags=["#shorts", "#viral", "#fyp"],
                           keywords=_auto_keywords(text)))
     return clips
@@ -3593,7 +3625,7 @@ def process(source: str, workdir: Path, opts: Options, progress: ProgressFn = _n
         clips = select_clips(listen, tr, opts, title, progress)
     if not clips:
         raise RuntimeError("No se encontraron segmentos con voz para recortar.")
-    sec_pad = 4.0 if caps else 1.5      # con subtítulos los tiempos son aproximados: más margen
+    sec_pad = 10.0      # margen de video que se guarda alrededor de cada clip: permite editarlo y optimizarlo sin volver a descargar
 
     def full_video() -> None:
         """Plan B de la descarga rápida: bajar el video entero."""
@@ -3692,7 +3724,7 @@ def process(source: str, workdir: Path, opts: Options, progress: ProgressFn = _n
         finally:
             c.start, c.end = c.start + off, c.end + off
             if part:
-                part[0].unlink(missing_ok=True)   # el trozo ya no hace falta
+                _keep_clip_source(workdir, c, part[0], off, part[2])   # el trozo se conserva para editar el clip después
         try:   # palabras alrededor del clip, para poder editarlo después
             exact = [dict(w, s=w["s"] + off, e=w["e"] + off) for w in _all_words(v_tr)] if exact_ok else None
             save_clip_words(workdir, c, tr, exact)
@@ -3842,12 +3874,13 @@ def rerender_clip(workdir: Path, index: int, edits: dict, progress: ProgressFn =
     tr_abs = {"language": res.get("language"), "segments": _group_words(words)}
 
     # video: el completo si está en el disco; si no, solo el trozo necesario
-    live = _live_src(workdir, index) if res.get("live") else None
+    live = _live_src(workdir, index)
     if res.get("live") and not live:
         raise RuntimeError("Este clip de directo no guardó su trozo de video, así que no se puede volver a editar.")
-    src = live[0] if live else _local_video(workdir, job)
+    src = None if res.get("live") else _local_video(workdir, job)
     part, off = None, 0.0
-    if live:
+    if src is None and live:
+        src = live[0]
         off = live[1]
         c.start, c.end = max(c.start, off), min(c.end, off + live[2])   # solo hay video dentro del trozo guardado
         if c.end - c.start < 1.0:
@@ -4380,15 +4413,30 @@ def _live_keep_source(workdir: Path, chunk: Path, c: Clip, t0_abs: float, chunk_
         pass   # sin el trozo el clip se ve igual; solo no se podrá volver a editar
 
 
+def _keep_clip_source(workdir: Path, c: Clip, part: Path, off: float, meta: dict) -> None:
+    """Guarda el trozo de video del clip (ya con su margen) en clip_src/ y borra el original temporal."""
+    try:
+        d = workdir / "clip_src"
+        d.mkdir(exist_ok=True)
+        dest = d / f"{c.index:02d}{part.suffix.lower() or '.mkv'}"
+        shutil.move(str(part), str(dest))
+        (d / f"{c.index:02d}.json").write_text(json.dumps({"off": round(off, 3), "dur": round(float(meta["duration"]), 3),
+                                                           "file": dest.name}))
+    except Exception:
+        part.unlink(missing_ok=True)
+
+
 def _live_src(workdir: Path, index: int) -> Optional[tuple]:
-    """(video, desfase) del trozo guardado de un clip de directo, o None."""
-    f, j = workdir / "live_src" / f"{int(index):02d}.mp4", workdir / "live_src" / f"{int(index):02d}.json"
-    if f.exists() and j.exists():
+    """(video, desfase, duración) del trozo guardado de un clip (directo en live_src/, video normal en clip_src/), o None."""
+    for folder in ("live_src", "clip_src"):
+        j = workdir / folder / f"{int(index):02d}.json"
         try:
             m = json.loads(j.read_text())
-            return f, float(m["off"]), float(m["dur"])
+            f = workdir / folder / m.get("file", f"{int(index):02d}.mp4")
+            if f.exists():
+                return f, float(m["off"]), float(m["dur"])
         except Exception:
-            return None
+            continue
     return None
 
 
