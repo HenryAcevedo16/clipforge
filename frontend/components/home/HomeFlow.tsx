@@ -307,13 +307,22 @@ export function HomeFlow() {
 
       {step === 1 && (
         <>
-          <section aria-labelledby="h-src" className="hero-aurora anim-rise -mx-4 -mt-6 px-4 pb-4 pt-12 text-center sm:-mx-6 sm:px-6 lg:-mx-10 lg:-mt-10 lg:px-10 lg:pt-20">
-            <h1 id="h-src" className="mx-auto max-w-[18ch] text-[2.4rem] font-extrabold leading-[1.05] tracking-tight sm:text-[3.4rem]">
+          <section aria-labelledby="h-src" className="hero-aurora relative isolate -mx-4 -mt-6 overflow-hidden px-4 pb-4 pt-12 text-center sm:-mx-6 sm:px-6 lg:-mx-10 lg:-mt-10 lg:px-10 lg:pt-20">
+            <div aria-hidden className="studio-grid pointer-events-none absolute inset-x-0 top-0 -z-10 h-80" />
+            <div className="relative z-10 mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-accent/25 bg-raised/70 px-3.5 py-1.5 text-xs font-bold text-accent-hi shadow-[0_8px_30px_-18px_var(--brand-glow)] backdrop-blur">
+              <Sparkles className="size-3.5" aria-hidden /> NOVOCLIP STUDIO <span className="text-ink-3">·</span> EDICIÓN INTELIGENTE
+            </div>
+            <h1 id="h-src" className="relative z-10 mx-auto max-w-[18ch] text-[2.4rem] font-extrabold leading-[1.05] tracking-tight sm:text-[3.4rem]">
               Convierte un video largo en clips que enganchan
             </h1>
-            <p className="mx-auto mt-4 max-w-[52ch] text-base text-ink-2 sm:text-lg">Pega un link de YouTube, Twitch, Kick o TikTok (también directos) o sube un video. Te devolvemos clips verticales con subtítulos y una nota de la IA, listos para publicar.</p>
+            <p className="relative z-10 mx-auto mt-4 max-w-[52ch] text-base text-ink-2 sm:text-lg">Pega un link de YouTube, Twitch, Kick o TikTok (también directos) o sube un video. Te devolvemos clips verticales con subtítulos y una nota de la IA, listos para publicar.</p>
+            <div className="relative z-10 mx-auto mt-6 flex max-w-4xl flex-wrap justify-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-line/80 bg-raised/70 px-3 py-1.5 text-xs font-semibold text-ink-2"><Sparkles className="size-3.5 text-accent-hi" aria-hidden /> Selección inteligente</span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-line/80 bg-raised/70 px-3 py-1.5 text-xs font-semibold text-ink-2"><Captions className="size-3.5 text-accent-hi" aria-hidden /> Subtítulos dinámicos</span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-line/80 bg-raised/70 px-3 py-1.5 text-xs font-semibold text-ink-2"><Scissors className="size-3.5 text-accent-hi" aria-hidden /> Cortes editables</span>
+            </div>
 
-            <div className="glow-ring mx-auto mt-9 max-w-3xl p-3 text-left sm:p-4">
+            <div className="glow-ring relative z-10 mx-auto mt-9 max-w-3xl p-3 text-left sm:p-4">
               <Tabs selectedKey={mode} onSelectionChange={(k) => { setMode(String(k) as "url" | "file"); setSrcError(null); }} className="w-full">
                 <Tabs.ListContainer>
                   <Tabs.List aria-label="Cómo quieres darnos el video">
