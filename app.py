@@ -586,8 +586,13 @@ def clip_optimize(job_id: str, index: int):
 
 @app.post("/api/jobs/{job_id}/clips/{index}/edit-with-ai")
 async def clip_edit_with_ai(job_id: str, index: int, request: Request):
-    """Aplica una instrucción en lenguaje natural al clip usando el optimizador estructurado existente."""
-    data = await request.json()
+    """Aplica una instrucción editorial limitada al clip usando el optimizador estructurado existente."""
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(400, "El cuerpo de la solicitud no es JSON válido.")
+    if not isinstance(data, dict):
+        raise HTTPException(400, "Se esperaba un objeto JSON con la instrucción.")
     instruction = str(data.get("instruction", "")).strip()
     if not instruction:
         raise HTTPException(400, "Escribe qué quieres cambiar en el clip.")
