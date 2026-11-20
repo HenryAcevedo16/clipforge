@@ -1,8 +1,14 @@
 """Tests for source-backed spoken hook excerpts."""
 
+import subprocess
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
-from pipeline import _line_features, _spoken_quote
+import numpy as np
+
+from pipeline import _audio_waveform, _line_features, _spoken_quote
 
 
 class SpokenQuoteTests(unittest.TestCase):
@@ -36,6 +42,24 @@ class SpokenQuoteTests(unittest.TestCase):
             {"w": "después", "s": 3.0, "e": 3.3},
         ]
         self.assertEqual(_spoken_quote(words, 1.0), "primera segunda")
+
+
+class AudioWaveformTests(unittest.TestCase):
+    def test_returns_normalized_audio_peaks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "source.mp4"
+            source.touch()
+            samples = np.array([0.1, 0.1, 0.9, 0.9], dtype=np.float32)
+            result = subprocess.CompletedProcess(["ffmpeg"], 0, samples.tobytes(), b"")
+            with patch("pipeline._sp_run", return_value=result):
+                waveform = _audio_waveform(source, 0.0, 2.0, bins=2)
+        self.assertEqual(len(waveform), 2)
+        self.assertAlmostEqual(waveform[1], 1.0)
+        self.assertGreater(waveform[0], 0.0)
+        self.assertLess(waveform[0], 1.0)
+
+    def test_returns_empty_when_source_is_missing(self):
+        self.assertEqual(_audio_waveform(Path("missing-source.mp4"), 0.0, 2.0), [])
 
 
 class NarrativeFeatureTests(unittest.TestCase):
