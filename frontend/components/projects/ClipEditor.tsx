@@ -278,7 +278,11 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
 
   const saveText = async () => {
     try {
-      await api.updateClipMeta(jobId, index, { title, caption, hashtags: tags.split(/\s+/).filter(Boolean) });
+      const nextTitle = title.trim() || data?.clip.title || title;
+      const nextTags = tags.split(/\s+/).filter(Boolean).map((tag) => tag.startsWith("#") ? tag : `#${tag}`);
+      await api.updateClipMeta(jobId, index, { title: nextTitle, caption, hashtags: nextTags });
+      setTitle(nextTitle);
+      setData((current) => current ? { ...current, clip: { ...current.clip, title: nextTitle, caption, hashtags: nextTags } } : current);
       toast("Título, descripción y hashtags guardados.");
       onChanged();
     } catch (e) {
