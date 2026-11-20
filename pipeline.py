@@ -267,8 +267,10 @@ def _audio_waveform(src: Optional[Path], start: float, end: float, bins: int = 6
         if not samples.size:
             return []
         width = max(1, math.ceil(samples.size / bins))
-        peaks = [float(np.sqrt(np.mean(np.square(samples[i:i + width], dtype=np.float64))))
-                 for i in range(0, samples.size, width)]
+        peaks = []
+        for i in range(0, samples.size, width):
+            segment = samples[i:i + width].astype(np.float64)
+            peaks.append(float(np.sqrt(np.mean(segment * segment))))
         peak = max(peaks, default=0.0)
         if peak <= 1e-8:
             return [0.0] * min(bins, len(peaks))
