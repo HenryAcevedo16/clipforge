@@ -2755,14 +2755,15 @@ def _filter_path(p: Path) -> str:
 # 6. Render
 # --------------------------------------------------------------------------- #
 def _blur_bg(frame: np.ndarray, out_w: int, out_h: int) -> np.ndarray:
+    """Fondo desenfocado y oscurecido. Todo el trabajo se hace en pequeño y solo se amplía el recorte visible (≈4x más rápido)."""
     h, w = frame.shape[:2]
     sc = max(out_w / w, out_h / h)
-    small = cv2.resize(frame, (max(1, int(w * sc / 8)), max(1, int(h * sc / 8))), interpolation=cv2.INTER_AREA)
-    small = cv2.GaussianBlur(small, (0, 0), 6)
-    big = cv2.resize(small, (int(w * sc) + 2, int(h * sc) + 2), interpolation=cv2.INTER_LINEAR)
-    y0, x0 = (big.shape[0] - out_h) // 2, (big.shape[1] - out_w) // 2
-    bg = big[y0 : y0 + out_h, x0 : x0 + out_w]
-    return (bg * 0.55).astype(np.uint8)
+    sw, sh = max(2, int(w * sc / 8)), max(2, int(h * sc / 8))
+    small = cv2.resize(frame, (sw, sh), interpolation=cv2.INTER_AREA)
+    small = cv2.convertScaleAbs(cv2.GaussianBlur(small, (0, 0), 6), alpha=0.55)
+    cw, ch = min(sw, max(2, round(out_w * sw / (w * sc)))), min(sh, max(2, round(out_h * sh / (h * sc))))
+    x0, y0 = (sw - cw) // 2, (sh - ch) // 2
+    return cv2.resize(small[y0:y0 + ch, x0:x0 + cw], (out_w, out_h), interpolation=cv2.INTER_LINEAR)
 
 
 def _cut_clip(src: Path, clip: Clip, iv: Optional[list], fps: float, has_audio: bool, out: Path,
