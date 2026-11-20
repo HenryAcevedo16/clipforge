@@ -3995,7 +3995,7 @@ y reescribiendo los textos; un problema de encuadre se arregla eligiendo otro "l
         caption: str = Field(description="descripción con una pregunta que invite a comentar")
         hashtags: list[str] = Field(description="3-6 hashtags")
         keywords: list[str] = Field(description="3-8 palabras EXACTAS del clip que conviene resaltar")
-        layout: str = Field(default="", description="solo si la revisión detectó un problema de ENCUADRE: auto | speaker | wide | track | blur | gaming | gamecenter | split. Vacío = no cambiar")
+        layout: str = Field(default="", description="si la revisión detectó un problema de ENCUADRE o el creador pidió cambiarlo: auto | speaker | wide | track | blur | gaming | gamecenter | split. Vacío = no cambiar")
         cambios: list[str] = Field(description="2-5 frases cortas, en español, explicando qué cambiaste y por qué (incluye qué problema de la revisión arreglaste)")
         no_resuelto: list[str] = Field(default_factory=list, description="problemas de la revisión que NO se pueden arreglar solos (p. ej. subtítulos que tapan algo); vacío si arreglaste todo")
 
