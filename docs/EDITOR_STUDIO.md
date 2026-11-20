@@ -13,6 +13,8 @@
    - "Cambia el encuadre a gaming."
 6. Revisa el resultado renderizado. Si la optimización no funciona, restaura la versión anterior.
 
+Las instrucciones de IA trabajan sobre la última versión guardada del clip. Si hay cambios manuales pendientes en el editor, primero pulsa **Volver a generar**; el botón de instrucciones se mantiene desactivado para evitar sobrescribirlos.
+
 ## Reglas de fidelidad
 
 - `hook_quote` es un extracto de palabras reales de la transcripción y se muestra separado del gancho de pantalla.
