@@ -72,8 +72,9 @@ La página principal (`/`) ahora es el diseño **NovoClip** (carpeta `web/`, ya 
   directo, descarga rápida, resolución, estilo de subtítulos y revisión con IA.
 - **Mis proyectos**: se guardan en disco y siguen ahí al reiniciar la app. Cada proyecto muestra su progreso en
   vivo, tiene botón para **cancelar / detener el directo** y los clips van apareciendo según se hacen.
-- **Editor de cortes** en cada clip: corta con un clic en la transcripción, corrige palabras de los subtítulos,
-  resalta palabras clave, cambia título, titular, encuadre y estilo, y vuelve a generar solo ese clip.
+- **Editor de cortes** en cada clip: línea de tiempo visual, selección IN/OUT, cortes por palabra, corrección de subtítulos,
+  resaltado de palabras clave, título, gancho, encuadre y estilo. También puedes pedir cambios en lenguaje natural a la IA
+  configurada (corte, contexto, gancho, textos y encuadre) y restaurar la versión anterior.
 - **Ajustes**: IA incluida o clave propia (Gemini/Claude), licencia, y lo que la app lee de tu equipo.
 - Kit de marca, Calendario y Cuentas de redes son una **vista previa**: guardan datos solo en el navegador y todavía
   no publican ni aplican logos (llevan un aviso en pantalla).
