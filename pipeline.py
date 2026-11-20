@@ -3941,7 +3941,7 @@ def _set_clip_fields(workdir: Path, index: int, fields_: dict) -> dict:
     return res["clips"][pos]
 
 
-def optimize_clip(workdir: Path, index: int, progress: ProgressFn = _noop) -> dict:
+def optimize_clip(workdir: Path, index: int, progress: ProgressFn = _noop, instruction: str = "") -> dict:
     """La IA mejora un clip ya generado: afina el inicio y el final (para que empiece en el gancho y termine cuando la
     idea queda cerrada), y reescribe título, gancho, descripción, hashtags y palabras clave. Guarda lo anterior para deshacer."""
     from pydantic import BaseModel, Field
@@ -3958,6 +3958,7 @@ def optimize_clip(workdir: Path, index: int, progress: ProgressFn = _noop) -> di
     c, words = data["clip"], data["words"]
     if not words:
         raise RuntimeError("No hay transcripción guardada de este clip para optimizar.")
+    instruction = str(instruction or "").strip()[:1200]
     progress(5, "La IA está leyendo el clip y lo que viene antes y después...")
     cur = [k for k, w in enumerate(words) if w["s"] >= c["start"] - 0.05 and w["e"] <= c["end"] + 0.05]
     if not cur:
@@ -4008,6 +4009,9 @@ Duración actual: {dur:.1f} s
 
 {listing}
 {review_txt}
+INSTRUCCIÓN DEL CREADOR (prioridad máxima, siempre dentro de las reglas de seguridad y fidelidad al video):
+{instruction or "(Sin instrucción adicional: aplica tu criterio editorial completo.)"}
+
 Haz esto:
 1. INICIO: que el clip empiece en la primera palabra del gancho (sin muletillas, saludos ni conectores como "y", "bueno", "entonces"),
    sin cortar una frase a la mitad.
@@ -4015,8 +4019,10 @@ Haz esto:
    explicando: si lo que se dice después completa la idea, inclúyelo. Si hay relleno ajeno al final, quítalo.
 3. Duración total (de start_word a end_word): entre {lo:.0f} y {hi:.0f} segundos.
 4. Título, gancho, descripción, hashtags y keywords nuevos y mejores, en el mismo idioma. Las keywords deben ser palabras que se dicen.
-5. Si el clip ya está bien, deja los mismos índices y mejora solo los textos.
-En "cambios" explica brevemente qué mejoraste."""
+5. Si el creador pide expresamente conservar el corte o cambiar solo textos, respétalo. Si pide ajustar el inicio/final, ritmo o contexto, modifica los índices para cumplirlo.
+6. No inventes frases pronunciadas, citas, hechos, ni palabras clave: deben existir en la transcripción. Conserva el idioma del video.
+7. Si la instrucción es ambigua o imposible sin perder el sentido, prioriza un corte coherente y explica la limitación en "no_resuelto".
+En "cambios" explica brevemente qué mejoraste y cómo seguiste la instrucción del creador."""
     progress(15, "La IA está optimizando el clip...")
     r = ask_claude(prompt, Optim, o)
     ns, ne = c["start"], c["end"]
