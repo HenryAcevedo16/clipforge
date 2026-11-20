@@ -239,6 +239,12 @@ class Clip:
         return self.end - self.start
 
 
+def _spoken_quote(words: list, start: float, window: float = 4.0, limit: int = 7) -> str:
+    """Devuelve una cita contigua de palabras reales de la transcripción, desde un tiempo fuente."""
+    picked = sorted((w for w in words if start - 0.05 <= float(w.get("s", -1)) <= start + window), key=lambda w: w["s"])
+    return " ".join(str(w.get("w", "")).strip() for w in picked[:limit] if str(w.get("w", "")).strip())
+
+
 # --------------------------------------------------------------------------- #
 # Utilidades
 # --------------------------------------------------------------------------- #
@@ -1146,8 +1152,10 @@ def select_heuristic(src: Path, tr: dict, opts: Options) -> list[Clip]:
         title = " ".join(first.split()[:9]).rstrip(",.;:")
         text = " ".join(l["text"] for l in lines[i : j + 1])
         norm = 70 + 25 * ((sc - lo) / (hi - lo) if hi > lo else 1)
-        clips.append(Clip(index=k + 1, start=max(0, _trim_start(lines[i]) - 0.1), end=e + 0.35, title=title,
-                          hook=" ".join(first.split()[:6]).upper(), score=round(norm),
+        start_t = _trim_start(lines[i])
+        hook_quote = _spoken_quote([w for line in lines[i : j + 1] for w in line.get("words", [])], start_t)
+        clips.append(Clip(index=k + 1, start=max(0, start_t - 0.1), end=e + 0.35, title=title,
+                          hook=" ".join(first.split()[:6]).upper(), hook_quote=hook_quote, score=round(norm),
                           reason=why, caption=title, hashtags=["#shorts", "#viral", "#fyp"],
                           keywords=_auto_keywords(text)))
     return clips
@@ -1694,9 +1702,7 @@ Reglas:
                     if opts.min_len * 0.85 <= rng[1] - cand[k]["s"] <= opts.max_len * 1.15:
                         start_t = cand[k]["s"]
                     break
-        quote_words = [w for line in lines[i:j + 1] for w in line.get("words", [])
-                       if w["s"] >= start_t - 0.05 and w["s"] <= start_t + 4.0]
-        hook_quote = " ".join(w["w"] for w in quote_words[:7])
+        hook_quote = _spoken_quote([w for line in lines[i:j + 1] for w in line.get("words", [])], start_t)
         clips.append(Clip(index=len(clips) + 1, start=max(0, start_t - 0.1), end=rng[1] + 0.35,
                           title=c.title, hook=c.hook, hook_quote=hook_quote, score=blend(c), reason=c.reason,
                           caption=c.caption, hashtags=[h if h.startswith("#") else "#" + h for h in c.hashtags],
@@ -3475,8 +3481,7 @@ def manual_clips(tr: dict, ranges: list, opts: Options, video_title: str = "") -
         txt = " ".join(w["w"] for w in words if w["s"] >= a - 0.05 and w["e"] <= b + 0.05).strip()
         texts.append(txt)
         first = " ".join(txt.split()[:8]) or f"Clip {i}"
-        spoken = [w for w in words if w["s"] >= a - 0.05 and w["e"] <= b + 0.05]
-        hook_quote = " ".join(w["w"] for w in spoken[:7])
+        hook_quote = _spoken_quote(words, a)
         clips.append(Clip(index=i, start=a, end=b, title=first[:60], hook=" ".join(txt.split()[:6]).upper(), hook_quote=hook_quote, score=60.0,
                           caption=first, hashtags=["#shorts", "#viral", "#fyp"], keywords=_auto_keywords(txt)))
     if not (opts.use_ai and ai_backend()) or not any(texts):
@@ -3916,7 +3921,7 @@ def update_clip_meta(workdir: Path, index: int, meta: dict) -> dict:
 # --------------------------------------------------------------------------- #
 # Optimizar un clip con la IA (después de generarlo)
 # --------------------------------------------------------------------------- #
-_OPT_FIELDS = ("start", "end", "title", "hook", "caption", "hashtags", "keywords")
+_OPT_FIELDS = ("start", "end", "title", "hook", "hook_quote", "caption", "hashtags", "keywords")
 
 
 def _set_clip_fields(workdir: Path, index: int, fields_: dict) -> dict:
@@ -4023,7 +4028,8 @@ En "cambios" explica brevemente qué mejoraste."""
     prev["layout"] = data["layout"]
     layout_new = r.layout.strip() if r.layout.strip() in ("auto", "speaker", "wide", "track", "blur", "gaming", "gamecenter", "split") else ""
     layout_changed = bool(layout_new) and layout_new != data["layout"]
-    new = {"start": ns, "end": ne, "title": r.title.strip() or c["title"], "hook": r.hook.strip(), "caption": r.caption.strip() or c.get("caption", ""),
+    new = {"start": ns, "end": ne, "title": r.title.strip() or c["title"], "hook": r.hook.strip(),
+           "hook_quote": _spoken_quote(words, ns), "caption": r.caption.strip() or c.get("caption", ""),
            "hashtags": tags or c.get("hashtags", []), "keywords": kws or c.get("keywords", [])}
     need_render = (abs(ns - c["start"]) > 0.15 or abs(ne - c["end"]) > 0.15 or new["hook"] != (c.get("hook") or "")
                    or set(new["keywords"]) != set(c.get("keywords") or []) or layout_changed)
