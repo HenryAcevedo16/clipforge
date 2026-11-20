@@ -1513,7 +1513,7 @@ def _extract_json(text: str) -> str:
 # Se pueden cambiar con NOVOCLIP_MODEL_TECH / _COPY / _VERIFY. Sin rol se usa el modelo de siempre.
 _ROLE_MODELS = {"tech": ("sonnet", "claude-sonnet-5-5"), "copy": ("haiku", "claude-haiku-5-5"),
                 "verify": ("opus", "claude-opus-5-5")}
-_MODEL_ERR = re.compile(r"model|limit|quota|overload|rate|capacity", re.I)
+_MODEL_ERR = re.compile(r"model|limit|quota|overload|capacity", re.I)
 
 
 def _role_models(role: Optional[str], backend: str, opts: Options) -> list:
@@ -4159,12 +4159,15 @@ ok=true si todo bien. Si no: fix = tech (corte), copy (textos) o both, y motivo 
         if v.ok:
             break
         fix, last_motivo = (v.fix if v.fix in ("tech", "copy", "both") else "both"), v.motivo.strip()[:120]
+        need_tech = need_tech or fix in ("tech", "both")      # si Opus pide corregir el corte, Sonnet tiene que trabajar aunque antes no hiciera falta
     if verified is False and last_motivo:
         pending.append(f"Opus: {last_motivo}")
     ns, ne = (cut[0], cut[1]) if cut else (c["start"], c["end"])
     kws = [_norm(k) for kw in (tech.keywords if tech else []) for k in kw.split() if _norm(k)][:10]
     tags = [h if h.startswith("#") else "#" + h for h in cp.hashtags]
     cambios = list(tech.cambios) if tech else ["Se mejoraron los textos (el corte ya estaba bien)."]
+    if tech and cut is None:
+        cambios = ["El corte propuesto no era válido; se mantuvo el original."]
     pending += list(tech.no_resuelto) if tech else []
     cambios.append("Sonnet: corte · Haiku: textos · " + ("Opus verificó." if verified else "sin verificación de Opus."))
     prev = {k: c.get(k) for k in _OPT_FIELDS}

@@ -139,3 +139,32 @@ def test_role_models_table(monkeypatch):
     assert pipeline._role_models(None, "cli", o) == ["sonnet"]
     monkeypatch.setenv("NOVOCLIP_MODEL_COPY", "sonnet")
     assert pipeline._role_models("copy", "cli", o) == ["sonnet"]
+
+
+def test_opus_failure_applies_without_verification(env, monkeypatch):
+    wd, calls, _ = env
+    real = pipeline.ask_claude
+
+    def boom(prompt, schema, opts, images=None, videos=None, role=None):
+        if role == "verify":
+            raise RuntimeError("Opus no disponible")
+        return real(prompt, schema, opts, images, videos, role=role)
+
+    monkeypatch.setattr(pipeline, "ask_claude", boom)
+    out = pipeline.optimize_clip(wd, 1)
+    assert out["optimized"] and any("sin verificación de Opus" in n for n in out["opt_note"])
+
+
+def test_opus_asks_tech_when_sonnet_was_skipped(env):
+    wd, calls, script = env
+    set_review(wd, [{"tipo": "subtitulos", "gravedad": "baja", "detalle": "tapan algo"}])
+    script["verify"] = [dict(ok=False, fix="tech", motivo="el final queda cortado"), dict(ok=True)]
+    pipeline.optimize_clip(wd, 1)
+    assert roles(calls) == ["copy", "verify", "tech", "verify"]       # Sonnet entra solo cuando Opus lo pide
+
+
+def test_invalid_cut_twice_says_so_in_notes(env):
+    wd, calls, script = env
+    script["tech"] = dict(start_word=0, end_word=2, keywords=[], layout="", cambios=["cambié mucho"], no_resuelto=[])
+    out = pipeline.optimize_clip(wd, 1)
+    assert any("no era válido" in n for n in out["opt_note"]) and "cambié mucho" not in out["opt_note"]
