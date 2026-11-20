@@ -199,6 +199,9 @@ export const mockApi: Api = {
   async optimizeClip() {
     return { id: "mock-opt" };
   },
+  async editClipWithAI() {
+    return { id: "mock-opt" };
+  },
   async revertClip() {
     return { id: "mock-rev" };
   },
