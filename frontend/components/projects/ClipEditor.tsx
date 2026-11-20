@@ -1,5 +1,5 @@
 "use client";
-import { Check, Eraser, Highlighter, Sparkles, Loader2, Scissors, SpellCheck, Trash2 } from "lucide-react";
+import { AudioLines, Check, Eraser, Highlighter, Sparkles, Loader2, Scissors, SpellCheck, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { waitJob } from "@/lib/api/wait";
 import { api, ApiError, type ClipEditData, type ClipToggles, type EditWord } from "@/lib/api";
@@ -116,6 +116,16 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
 
   const lo = words.length ? Math.max(0, Math.floor(words[0].s * 10) / 10) : 0;
   const hi = words.length ? Math.ceil(words[words.length - 1].e * 10) / 10 : 0;
+  const timeline = useMemo(() => {
+    const count = 64;
+    const span = Math.max(0.1, hi - lo);
+    return Array.from({ length: count }, (_, i) => {
+      const a = lo + (span * i) / count;
+      const b = lo + (span * (i + 1)) / count;
+      const speech = words.reduce((n, w) => n + (w.e >= a && w.s < b ? 1 : 0), 0);
+      return { time: a, level: Math.min(94, 10 + speech * 16), selected: a <= end && b >= start };
+    });
+  }, [words, lo, hi, start, end]);
   const first = useMemo(() => words.findIndex((w) => w.e > start + 0.05), [words, start]);
   const last = useMemo(() => words.reduce((acc, w, k) => (w.s < end - 0.2 ? k : acc), -1), [words, end]);
 
@@ -322,6 +332,54 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
                 Empieza en <b className="text-ink">{sec(start)}</b> · termina en <b className="text-ink">{sec(end)}</b> · dura <b className="text-ink">{formatDuration(end - start)}</b>
                 {changed && <span className="ml-2 text-warn">(cambiado)</span>}
               </p>
+              {words.length > 0 && (
+                <section className="mt-4 rounded-2xl border border-line/80 bg-gradient-to-br from-raised-2 to-surface p-3.5 sm:p-4" aria-label="Línea de tiempo del clip">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="grid size-8 place-items-center rounded-xl bg-accent-soft text-accent-hi"><AudioLines className="size-4" aria-hidden /></span>
+                      <div>
+                        <p className="text-sm font-bold text-ink">Línea de tiempo</p>
+                        <p className="text-[11px] text-ink-3">Actividad de voz estimada desde la transcripción</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full border border-line bg-raised px-2.5 py-1 text-[11px] font-bold text-ink-2">Marca {next === "s" ? "el inicio" : "el final"}</span>
+                  </div>
+                  <div className="relative flex h-[5.25rem] items-end gap-[3px] overflow-hidden rounded-xl border border-line/70 bg-[#0B1118] px-2 pb-2 pt-2">
+                    {timeline.map((bin, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        title={sec(bin.time)}
+                        aria-label={`Seleccionar ${sec(bin.time)} como ${next === "s" ? "inicio" : "final"}`}
+                        onClick={() => {
+                          if (next === "s") {
+                            setStart(Math.max(lo, Math.min(end - 1, bin.time)));
+                            setNext("e");
+                          } else {
+                            setEnd(Math.min(hi, Math.max(start + 1, bin.time)));
+                            setNext("s");
+                          }
+                        }}
+                        className="group flex h-full min-w-0 flex-1 items-end justify-center rounded-t-sm outline-none focus-visible:ring-2 focus-visible:ring-accent-hi"
+                      >
+                        <span
+                          className={cn("w-full rounded-t-[3px] transition-colors duration-150", bin.selected ? "bg-accent-hi shadow-[0_0_10px_var(--brand-glow)]" : "bg-[#40505D] group-hover:bg-[#6A8795]")}
+                          style={{ height: `${bin.level}%` }}
+                        />
+                      </button>
+                    ))}
+                    <div className="pointer-events-none absolute inset-y-0 border-l-2 border-ok" style={{ left: `calc(8px + (100% - 16px) * ${Math.max(0, Math.min(1, (start - lo) / Math.max(0.1, hi - lo)))})` }} />
+                    <div className="pointer-events-none absolute inset-y-0 border-l-2 border-bad" style={{ left: `calc(8px + (100% - 16px) * ${Math.max(0, Math.min(1, (end - lo) / Math.max(0.1, hi - lo)))})` }} />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-[11px] font-medium tabular-nums text-ink-3">
+                    <span>{sec(lo)}</span>
+                    <span className="text-ok">IN {sec(start)}</span>
+                    <span className="text-bad">OUT {sec(end)}</span>
+                    <span>{sec(hi)}</span>
+                  </div>
+                  <p className="mt-2 text-[11px] text-ink-3">Haz clic sobre las barras para colocar IN y OUT. Usa los controles inferiores para ajustar con precisión.</p>
+                </section>
+              )}
               {words.length > 0 && (
                 <div className="mt-3 grid gap-3 rounded-2xl border border-line bg-raised-2/50 p-3.5 sm:grid-cols-2">
                   <label className="flex flex-col gap-1 text-sm font-semibold text-ink-2">
