@@ -3811,7 +3811,7 @@ def load_clip_for_edit(workdir: Path, index: int) -> dict:
                 words = [w for w in _all_words(json.loads(p.read_text(encoding="utf-8")))
                          if c["start"] - EDIT_MARGIN <= w["s"] <= c["end"] + EDIT_MARGIN]
                 break
-    job = _job_info(workdir)
+    job = _job_info(workdir) or {}
     o = job.get("opts", {})
     source = _local_video(workdir, job) if job else None
     waveform = _audio_waveform(source, float(c["start"]), float(c["end"]))
