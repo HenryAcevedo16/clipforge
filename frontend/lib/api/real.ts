@@ -99,6 +99,7 @@ export const realApi: Api = {
     }),
 
   optimizeClip: (jobId, index) => request(`/api/jobs/${encodeURIComponent(jobId)}/clips/${index}/optimize`, { method: "POST" }),
+  editClipWithAI: (jobId, index, instruction) => request(`/api/jobs/${encodeURIComponent(jobId)}/clips/${index}/edit-with-ai`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instruction }) }),
   revertClip: (jobId, index) => request(`/api/jobs/${encodeURIComponent(jobId)}/clips/${index}/revert`, { method: "POST" }),
   async updateClipMeta(jobId, index, meta) {
     await request(`/api/jobs/${encodeURIComponent(jobId)}/clips/${index}/meta`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(meta) });
