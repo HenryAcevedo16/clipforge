@@ -26,6 +26,8 @@
 
 ## Session log (newest first)
 
+- 2026-11-20 — Reglas editables (reglas/, rules.py): glosario, plantillas de gancho (hook_options + botones), resaltado, guia_ia.md. 43 pruebas. Pendiente: probar en el PC y ajustar plantillas con videos reales.
+
 - 2026-11-20 — Optimizar con IA repartido: Sonnet (corte), Haiku (textos), Opus (verifica); respaldo al modelo de siempre; env NOVOCLIP_MODEL_TECH/COPY/VERIFY. 30 pruebas. Pendiente probar en el PC que la suscripción permita --model opus/haiku y medir latencia/tokens.
 
 - 2026-11-20 — Editar/Optimizar en videos normales sin volver a descargar (clip_src/), ganchos con sentido sin IA (_best_hook), nota absoluta sin IA. Revisado por Opus; 19 pruebas en verde. Pendiente: probar con un YouTube real en el PC; vigilar disco (≈20 s extra por clip).

@@ -1,0 +1,9 @@
+# Expresiones regulares (una por línea) que marcan una risa en la transcripción. No distinguen mayúsculas.
+
+\b(ja){2,}
+\(risas?\)
+\[risas?\]
+\bjeje
+\bhaha
+\(laughs?\)
+\[laughter\]

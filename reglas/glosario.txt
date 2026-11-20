@@ -1,0 +1,6 @@
+# Corrige siempre las mismas palabras mal transcritas.  Formato:   mal -> bien
+# No distingue mayúsculas. Puede ser una palabra o varias seguidas. Los tiempos del subtítulo no cambian.
+# Ejemplos (quita el # para activarlos):
+# chat gepeté -> ChatGPT
+# claud -> Claude
+# novo clip -> NovoClip

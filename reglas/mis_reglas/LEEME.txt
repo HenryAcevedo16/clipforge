@@ -1,0 +1,1 @@
+Pon aquí tus archivos de reglas (mismo nombre que los de la carpeta de arriba). Esta carpeta no se borra al actualizar.

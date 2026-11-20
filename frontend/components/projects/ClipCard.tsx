@@ -220,6 +220,14 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
           <div className="flex flex-col gap-2 rounded-2xl bg-raised-2 p-3.5">
             <label className="text-sm text-ink-3" htmlFor={`hook-${c.index}`}>Gancho (texto de arriba del video, déjalo vacío para quitarlo)</label>
             <input id={`hook-${c.index}`} value={hook} onChange={(e) => setHook(e.target.value)} disabled={applying} maxLength={90} className="min-h-11 w-full rounded-xl border border-line bg-raised px-3 text-base font-bold text-ink focus-visible:outline-2 focus-visible:outline-accent-hi" />
+            {!applying && (c.hook_options?.length ?? 0) > 1 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[13px] text-ink-3">Opciones:</span>
+                {c.hook_options!.map((o) => (
+                  <button key={o} type="button" onClick={() => setHook(o)} className="min-h-9 rounded-lg bg-raised px-2.5 text-[13px] font-semibold text-accent-hi transition-colors hover:bg-raised-2">{o}</button>
+                ))}
+              </div>
+            )}
             {applying ? (
               <div role="status" className="text-sm">
                 <div className="mb-1 flex items-center gap-2 font-semibold">

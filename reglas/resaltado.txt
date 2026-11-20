@@ -1,0 +1,5 @@
+# Palabras de los subtítulos que se resaltan de color.
+# +palabra = resaltar SIEMPRE      -palabra = no resaltar NUNCA
+# Ejemplos (quita el # para activarlos):
+# +increíble
+# -quiero

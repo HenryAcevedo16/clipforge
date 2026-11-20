@@ -1,0 +1,9 @@
+# Plantillas de gancho para el modo SIN IA.  Formato:   tipo | plantilla
+# Tipos:  pregunta (si la frase es una pregunta)  ·  numero (si el clip tiene una cifra)  ·  tema (si hay una palabra clave)
+# Variables: {frase} = la mejor frase del clip   {tema} = la palabra clave principal   {numero} = la primera cifra
+pregunta | ¿{frase}
+numero | {numero}: lo que nadie te cuenta
+numero | Esto pasó {numero} veces y nadie lo nota
+tema | Lo que nadie te dice de {tema}
+tema | El error con {tema} que casi todos cometen
+tema | Mira esto sobre {tema}

@@ -39,6 +39,7 @@ warnings.filterwarnings("ignore", module="huggingface_hub")
 import cv2
 import numpy as np
 from novoclip_signals import audience_bonus, replay_intervals
+import rules
 
 ROOT = Path(__file__).resolve().parent
 FONTS_DIR = ROOT / "fonts"
@@ -232,6 +233,7 @@ class Clip:
     keywords: list = field(default_factory=list)   # palabras a resaltar (color + zoom)
     layout: str = ""
     out_duration: float = 0.0                       # duración final (tras quitar silencios)
+    hook_options: list = field(default_factory=list)   # ganchos alternativos sin IA (el primero es el actual)
 
     @property
     def duration(self) -> float:
@@ -871,7 +873,7 @@ _WHISPER_CACHE: dict = {}
 def transcribe(src: Path, workdir: Path, opts: Options, progress: ProgressFn = _noop) -> dict:
     cache = workdir / "transcript.json"
     if cache.exists():
-        return json.loads(cache.read_text(encoding="utf-8"))
+        return apply_glossary(json.loads(cache.read_text(encoding="utf-8")))   # el archivo de caché queda sin tocar
 
     from faster_whisper import WhisperModel
 
@@ -921,7 +923,7 @@ def transcribe(src: Path, workdir: Path, opts: Options, progress: ProgressFn = _
     else:
         out = _run("cpu")
     cache.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
-    return out
+    return apply_glossary(out)
 
 
 # --------------------------------------------------------------------------- #
@@ -1067,6 +1069,91 @@ HOOK_TAIL = {"de", "que", "y", "o", "a", "en", "con", "por", "para", "la", "el",
              "se", "me", "te", "lo", "su", "mi", "pero", "como", "si", "and", "the", "to", "of", "in", "is", "but"}
 
 
+# --- Reglas editables (reglas/ y reglas/mis_reglas/): reemplazan estas constantes sin cambiar sus nombres ---
+_DEFAULTS = {"HOOK_WORDS": set(HOOK_WORDS), "FILLER_START": set(FILLER_START), "HOOK_TAIL": set(HOOK_TAIL),
+             "CTA_MARKERS": tuple(CTA_MARKERS), "LAUGH": LAUGH_RE.pattern}
+
+
+def load_rules() -> None:
+    """Relee las reglas del usuario si cambiaron (barato: solo mira la fecha de los archivos). Si algo falta o está roto,
+    se usan los valores de la app. shortcut: una expresión regular mala del usuario puede ser lenta; es una app local."""
+    global HOOK_WORDS, FILLER_START, HOOK_TAIL, CTA_MARKERS, LAUGH_RE
+    try:
+        def pick(name, key, kind):
+            items = rules.read_list(name)
+            if not items:
+                return _DEFAULTS[key]
+            low = [x.lower() for x in items]
+            return tuple(low) if kind == "tuple" else set(low)
+        HOOK_WORDS = pick("palabras_impacto.txt", "HOOK_WORDS", "set")
+        FILLER_START = pick("muletillas_inicio.txt", "FILLER_START", "set")
+        HOOK_TAIL = pick("colas_gancho.txt", "HOOK_TAIL", "set")
+        CTA_MARKERS = pick("relleno_cta.txt", "CTA_MARKERS", "tuple")
+        rx = rules.read_regexes("risas.txt")
+        LAUGH_RE = re.compile("|".join(rx) if rx else _DEFAULTS["LAUGH"], re.I)
+    except Exception as e:   # noqa: BLE001  (las reglas nunca deben romper la app)
+        print(f"[reglas] no se pudieron cargar ({e}); se usan los valores de la app")
+
+
+load_rules()   # al importar: deja las reglas listas
+
+
+def apply_glossary(tr: Optional[dict]) -> Optional[dict]:
+    """Corrige palabras mal transcritas con reglas/glosario.txt, palabra por palabra y conservando los tiempos.
+    Una frase de varias palabras se junta en una: empieza donde empezaba la primera y acaba donde acababa la última."""
+    gl = rules.read_glossary()
+    if not gl or not tr:
+        return tr
+    for seg in tr.get("segments", []):
+        ws = seg.get("words") or []
+        out, i, changed = [], 0, False
+        while i < len(ws):
+            hit = next(((len(src), dst) for src, dst in gl
+                        if i + len(src) <= len(ws) and tuple(_norm(w["w"]) for w in ws[i:i + len(src)]) == src), None)
+            if not hit:
+                out.append(ws[i])
+                i += 1
+                continue
+            n, dst = hit
+            first, last = ws[i], ws[i + n - 1]
+            lead = re.match(r"^[^\w]*", first["w"]).group(0)
+            trail = re.search(r"[^\w]*$", last["w"]).group(0)
+            body = re.sub(r"^[^\w]+|[^\w]+$", "", first["w"])
+            new = dst[:1].upper() + dst[1:] if (body[:1].isupper() and dst[:1].islower()) else dst
+            out.append(dict(first, w=lead + new + trail, e=last["e"]))
+            i += n
+            changed = True
+        if changed:
+            seg["words"] = out
+            seg["text"] = " ".join(w["w"] for w in out)
+    return tr
+
+
+def _hook_options(hook: str, text: str, index: int, max_options: int = 3) -> list:
+    """Hasta 3 ganchos sin IA: el actual primero y 1-2 plantillas de reglas/ganchos.txt que apliquen (rotan con el clip)."""
+    out = [hook]
+    kw = _auto_keywords(text)
+    tema = next((k for k in kw if not k.isdigit()), "")
+    nums = re.findall(r"\d+", text)
+    first = _norm(hook.split()[0]) if hook.split() else ""
+    ok = {"pregunta": hook.rstrip().endswith("?") or first in ("qué", "que", "cómo", "como", "cuál", "cuándo", "por", "quién"),
+          "numero": bool(nums), "tema": bool(tema)}
+    cands = [(t, tpl) for t, tpl in rules.read_templates() if ok.get(t)]
+    for k in range(len(cands)):
+        t, tpl = cands[(index + k) % len(cands)]
+        txt = tpl.replace("{frase}", hook.rstrip("?").strip()).replace("{tema}", tema).replace("{numero}", nums[0] if nums else "")
+        if "{" in txt or "}" in txt:
+            continue
+        txt = txt.strip().upper()
+        if t == "pregunta" and not txt.endswith("?"):
+            txt += "?"
+        if len(txt.split()) <= 9 and txt not in out:
+            out.append(txt)
+        if len(out) >= max_options:
+            break
+    return out
+
+
 def _best_hook(lines: list, feats: list, i: int, j: int, max_words: int = 7) -> str:
     """Frase corta con sentido para el gancho: la línea con más fuerza (pregunta, número, palabra clave, risa)
     de los primeros ~25 s del clip, sin conectores al inicio ni al final, cortada en un límite natural."""
@@ -1110,7 +1197,7 @@ def _auto_keywords(text: str, n: int = 6) -> list[str]:
     out = []
     for w in text.split():
         t = _norm(w)
-        if t and (t in HOOK_WORDS or re.fullmatch(r"\d+", t)) and t not in out:
+        if t and (t in HOOK_WORDS or re.fullmatch(r"\d+", t)) and t not in out and t not in rules.read_highlight()[1]:
             out.append(t)
     return out[:n]
 
@@ -1130,6 +1217,7 @@ def _attach_replay_signals(tr: dict, workdir: Path, captions: Optional[dict] = N
 
 
 def select_heuristic(src: Path, tr: dict, opts: Options) -> list[Clip]:
+    load_rules()
     lines = sentence_lines(tr)
     if not lines:
         return []
@@ -1177,7 +1265,7 @@ def select_heuristic(src: Path, tr: dict, opts: Options) -> list[Clip]:
         clips.append(Clip(index=k + 1, start=max(0, _trim_start(lines[i]) - 0.1), end=e + 0.35, title=title,
                           hook=hook.upper(), score=round(norm),
                           reason=why, caption=title, hashtags=["#shorts", "#viral", "#fyp"],
-                          keywords=_auto_keywords(text)))
+                          keywords=_auto_keywords(text), hook_options=_hook_options(hook.upper(), text, k + 1)))
     return clips
 
 
@@ -2766,7 +2854,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         act_c = _ass_color(act)
         emph_c = _ass_color(EMPH_COLORS.get(style, "39FF7A"))
-        kws = {_norm(k) for k in (clip.keywords or [])} if opts.highlight_keywords else set()
+        load_rules()
+        always, never = rules.read_highlight()
+        kws = (({_norm(k) for k in (clip.keywords or [])} | always) - never) if opts.highlight_keywords else set()
         for gi, g in enumerate(groups):
             g_end = g[-1]["e"] + 0.25
             if gi + 1 < len(groups):
@@ -3445,9 +3535,9 @@ def fetch_captions(url: str, opts: Options) -> Optional[dict]:
                     })
                 except (KeyError, TypeError, ValueError):
                     continue
-            return {"language": key.split("-")[0], "segments": _group_words(words), "approx": True,
-                    "title": info.get("title") or "video", "duration": float(info.get("duration") or 0),
-                    "heatmap": heatmap, "source": f"subtítulos {kind} de YouTube ({key})"}
+            return apply_glossary({"language": key.split("-")[0], "segments": _group_words(words), "approx": True,
+                                   "title": info.get("title") or "video", "duration": float(info.get("duration") or 0),
+                                   "heatmap": heatmap, "source": f"subtítulos {kind} de YouTube ({key})"})
     return None
 
 
@@ -3521,7 +3611,7 @@ def transcribe_ranges(listen: Path, workdir: Path, opts: Options, ranges: list, 
                                  words=[dict(w, s=w["s"] + pa, e=w["e"] + pa) for w in s_.get("words", [])]))
         shutil.rmtree(sub, ignore_errors=True)
     segments.sort(key=lambda x: x["s"])
-    return {"language": language, "segments": segments}
+    return apply_glossary({"language": language, "segments": segments})
 
 
 def manual_clips(tr: dict, ranges: list, opts: Options, video_title: str = "") -> list:
@@ -4067,6 +4157,8 @@ y reescribiendo los textos; un problema de encuadre se arregla eligiendo otro "l
         fix: str = Field(default="", description="si ok es false: tech | copy | both")
         motivo: str = Field(default="", description="qué está mal, máx 120 caracteres")
 
+    guide = rules.read_guide()      # reglas/guia_ia.md (o la tuya en mis_reglas/), recortada; vacía = no gasta tokens
+    guide_txt = f"\nGUÍA DEL USUARIO (respétala salvo que contradiga el formato pedido):\n{guide}" if guide else ""
     probs_all = rv.get("problemas", []) if (rv and not rv.get("error")) else []
     TECH_TYPES = {"inicio", "final", "contenido", "encuadre", "gancho"}
     need_tech = not (rv and not rv.get("error")) or any(str(p.get("tipo")) in TECH_TYPES for p in probs_all)
@@ -4086,7 +4178,7 @@ Haz esto:
 3. Duración total (de start_word a end_word): entre {lo:.0f} y {hi:.0f} segundos.
 4. keywords: palabras que se dicen y conviene resaltar. layout solo si hay un problema de encuadre.
 5. Si el clip ya está bien, deja los mismos índices.
-En "cambios" explica brevemente qué mejoraste."""
+En "cambios" explica brevemente qué mejoraste.{guide_txt}"""
 
     def run_tech(extra: str = ""):
         t = ask_claude(tech_prompt + extra, Tech, o, role="tech")
@@ -4109,7 +4201,7 @@ Texto del clip:
 {cut_text(cut)}
 
 Escribe un título (máx 60 caracteres), un gancho (máx 7 palabras, que genere curiosidad y tenga sentido por sí solo),
-una descripción con una pregunta que invite a comentar y 3-6 hashtags. No inventes datos que no se dicen en el clip.{extra}"""
+una descripción con una pregunta que invite a comentar y 3-6 hashtags. No inventes datos que no se dicen en el clip.{guide_txt}{extra}"""
         return ask_claude(pr, Copy, o, role="copy")
 
     def run_verify(cut, kws_, cp):

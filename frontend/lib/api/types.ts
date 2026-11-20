@@ -76,6 +76,7 @@ export interface ClipResult {
   end: number;
   title: string;
   hook: string;
+  hook_options?: string[]; // ganchos alternativos sin IA (el primero es el actual)
   score: number; // 0-100 (virality_score)
   reason: string;
   caption: string;

@@ -1,0 +1,14 @@
+REGLAS DE EDICIÓN DE NOVOCLIP
+=============================
+Estos archivos controlan cómo la app elige y escribe los clips SIN IA, y qué guía recibe la IA.
+
+NO edites estos archivos directamente: "actualizar_windows.bat" los vuelve a su versión original.
+Para cambiar algo, copia el archivo a la carpeta  reglas\mis_reglas\  y escribe ahí SOLO lo tuyo:
+  - En las listas, cada línea AÑADE una entrada. Escribe  -palabra  para QUITAR una de la base.
+  - En glosario.txt, tu línea gana si corrige la misma palabra que la base.
+  - En ganchos.txt, tus plantillas se SUMAN a las de la base.
+  - guia_ia.md: la tuya REEMPLAZA a la de la base.
+  - Las líneas con # son comentarios. Guarda en UTF-8 (el Bloc de notas sirve).
+
+Los cambios se leen solos al siguiente clip; no hace falta reiniciar la app.
+Si un archivo tiene un error, esa línea se salta y se avisa en la ventana negra; la app nunca se rompe.

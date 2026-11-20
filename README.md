@@ -291,3 +291,7 @@ Al crear un proyecto hay dos botones al final: **Generar sin IA (gratis)** y **G
 ### Optimizar con IA repartido entre modelos
 
 Al pulsar **Optimizar con IA**: **Sonnet** ajusta el corte, el encuadre y las palabras clave; **Haiku** escribe el gancho, el título, la descripción y los hashtags; **Opus** verifica un resumen corto y pide repetir solo la parte que falle (máximo 2 rondas). Si el reparto no se puede usar, vuelve al modelo de siempre. Se puede cambiar con las variables `NOVOCLIP_MODEL_TECH`, `NOVOCLIP_MODEL_COPY` y `NOVOCLIP_MODEL_VERIFY`. Con Gemini se usa un solo modelo y no hay verificación de Opus.
+
+### Reglas de edición editables (`reglas/`)
+
+La carpeta `reglas/` controla cómo se eligen y escriben los clips **sin IA** y qué guía recibe la IA: palabras de impacto, muletillas, relleno, risas, **glosario** (`mal -> bien`) que corrige los subtítulos sin cambiar los tiempos, **plantillas de ganchos** (hasta 3 opciones por clip, con botones para elegirlas), palabras a resaltar o no resaltar, y `guia_ia.md` (se añade a las instrucciones de Sonnet y Haiku, máx. 1.500 caracteres). Para cambiar algo, copia el archivo a `reglas/mis_reglas/` (no se borra al actualizar) y escribe solo lo tuyo; lee `reglas/LEEME.txt`.

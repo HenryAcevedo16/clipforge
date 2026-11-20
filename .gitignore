@@ -55,3 +55,7 @@ cookies.txt
 
 # Informe de la prueba de YouTube
 diagnostico_youtube.txt
+
+# Reglas personales del usuario (no se borran al actualizar)
+reglas/mis_reglas/*
+!reglas/mis_reglas/LEEME.txt
