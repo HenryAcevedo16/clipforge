@@ -27,3 +27,12 @@
 - El editor procesa y renderiza en el equipo donde corre NovoClip.
 - La edición en lenguaje natural usa el proveedor de IA configurado en Ajustes; requiere que ese proveedor esté disponible.
 - Esta integración no conecta por sí sola la conversación web de ChatGPT con el servidor local. Para ese flujo se necesita una conexión remota autorizada; no se debe exponer el servidor local sin autenticación.
+
+## Aplicar los cambios visuales
+
+El servidor FastAPI sirve la carpeta compilada `web/`; editar `frontend/` no cambia por sí solo la interfaz que se abre en localhost.
+
+- Windows: ejecuta `build_frontend.bat`.
+- Mac/Linux: ejecuta `./build_frontend.sh`.
+
+Después reinicia NovoClip y recarga el navegador con Ctrl+F5. Estos scripts compilan el frontend estático y copian el resultado a `web/`.
