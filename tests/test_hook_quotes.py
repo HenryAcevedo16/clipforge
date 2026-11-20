@@ -8,7 +8,7 @@ from pipeline import _spoken_quote
 class SpokenQuoteTests(unittest.TestCase):
     def test_extracts_real_words_in_source_time_order(self):
         words = [
-            {"w": "final", "s": 4.2, "e": 4.5},
+            {"w": "final", "s": 6.2, "e": 6.5},
             {"w": "primera", "s": 1.0, "e": 1.3},
             {"w": "segunda", "s": 1.4, "e": 1.8},
             {"w": "tercera", "s": 1.9, "e": 2.2},
