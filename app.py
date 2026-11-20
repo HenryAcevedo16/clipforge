@@ -584,6 +584,19 @@ def clip_optimize(job_id: str, index: int):
     return _clip_task(job_id, index, "optimize", pipeline.optimize_clip)
 
 
+@app.post("/api/jobs/{job_id}/clips/{index}/edit-with-ai")
+async def clip_edit_with_ai(job_id: str, index: int, request: Request):
+    """Aplica una instrucción en lenguaje natural al clip usando el optimizador estructurado existente."""
+    data = await request.json()
+    instruction = str(data.get("instruction", "")).strip()
+    if not instruction:
+        raise HTTPException(400, "Escribe qué quieres cambiar en el clip.")
+    if len(instruction) > 1200:
+        raise HTTPException(400, "La instrucción no puede superar los 1200 caracteres.")
+    return _clip_task(job_id, index, "edit-with-ai",
+                      lambda wd, idx, progress: pipeline.optimize_clip(wd, idx, progress, instruction=instruction))
+
+
 @app.post("/api/jobs/{job_id}/clips/{index}/revert")
 def clip_revert(job_id: str, index: int):
     return _clip_task(job_id, index, "revert", pipeline.revert_optimization)
