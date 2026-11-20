@@ -12,7 +12,8 @@ call npm ci
 if errorlevel 1 (popd & echo Error instalando dependencias. & pause & exit /b 1)
 
 echo.
-echo [2/3] Compilando NovoClip Studio...
+echo [2/3] Compilando NovoClip Studio para conectar con FastAPI...
+set NEXT_PUBLIC_USE_MOCK=false
 call npm run build
 if errorlevel 1 (popd & echo La compilacion fallo. No se copiaron archivos. & pause & exit /b 1)
 popd
