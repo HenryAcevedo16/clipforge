@@ -79,8 +79,7 @@ La página principal (`/`) ahora es el diseño **NovoClip** (carpeta `web/`, ya 
   no publican ni aplican logos (llevan un aviso en pantalla).
 - El diseño anterior sigue disponible en `/classic`.
 
-Para modificar el diseño (necesita Node 20+): `cd frontend && npm install && npm run build`, y copiar el contenido de
-`frontend/out/` a la carpeta `web/`. Con `npm run dev` se ve con datos de prueba (sin backend).
+Para compilar y aplicar cambios del diseño (necesita Node.js 22+): ejecuta `build_frontend.bat` en Windows o `./build_frontend.sh` en Mac/Linux. El script instala dependencias, compila `frontend/` y copia `frontend/out/` a `web/`, que es lo que sirve `app.py`. Con `cd frontend && npm run dev` puedes revisar la interfaz con datos de prueba (sin backend).
 
 ## IA incluida o clave propia (nuevo)
 Arriba de las opciones hay dos modos:
