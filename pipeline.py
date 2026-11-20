@@ -3830,7 +3830,7 @@ def rerender_clip(workdir: Path, index: int, edits: dict, progress: ProgressFn =
     old = res["clips"][pos]
     fields_ok = {f.name for f in Clip.__dataclass_fields__.values()}
     c = Clip(**{k: v for k, v in old.items() if k in fields_ok})
-    for k in ("title", "hook", "caption"):
+    for k in ("title", "hook", "hook_quote", "caption"):
         if k in edits and edits[k] is not None:
             setattr(c, k, str(edits[k]))
     if "hashtags" in edits:
@@ -3907,7 +3907,7 @@ def update_clip_meta(workdir: Path, index: int, meta: dict) -> dict:
     if pos is None:
         raise KeyError("clip no encontrado")
     c = res["clips"][pos]
-    for k in ("title", "caption"):
+    for k in ("title", "caption", "hook_quote"):
         if meta.get(k) is not None:
             c[k] = str(meta[k]).strip()
     if meta.get("hashtags") is not None:
