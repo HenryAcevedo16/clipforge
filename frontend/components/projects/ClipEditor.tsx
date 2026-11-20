@@ -124,9 +124,11 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
       const a = lo + (span * i) / count;
       const b = lo + (span * (i + 1)) / count;
       const speech = words.reduce((n, w) => n + (w.e >= a && w.s < b ? 1 : 0), 0);
-      return { time: a, level: Math.min(94, 10 + speech * 16), selected: a <= end && b >= start };
+      const audioPeak = data?.waveform?.[i];
+      const level = typeof audioPeak === "number" ? 8 + audioPeak * 86 : Math.min(94, 10 + speech * 16);
+      return { time: a, level, selected: a <= end && b >= start };
     });
-  }, [words, lo, hi, start, end]);
+  }, [words, lo, hi, start, end, data?.waveform]);
   const first = useMemo(() => words.findIndex((w) => w.e > start + 0.05), [words, start]);
   const last = useMemo(() => words.reduce((acc, w, k) => (w.s < end - 0.2 ? k : acc), -1), [words, end]);
 
@@ -401,7 +403,7 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
                       <span className="grid size-8 place-items-center rounded-xl bg-accent-soft text-accent-hi"><AudioLines className="size-4" aria-hidden /></span>
                       <div>
                         <p className="text-sm font-bold text-ink">Línea de tiempo</p>
-                        <p className="text-[11px] text-ink-3">Actividad de voz estimada desde la transcripción</p>
+                        <p className="text-[11px] text-ink-3">{data.waveform?.length ? "Forma de onda del audio original" : "Actividad de voz estimada desde la transcripción"}</p>
                       </div>
                     </div>
                     <span className="rounded-full border border-line bg-raised px-2.5 py-1 text-[11px] font-bold text-ink-2">Marca {next === "s" ? "el inicio" : "el final"}</span>
