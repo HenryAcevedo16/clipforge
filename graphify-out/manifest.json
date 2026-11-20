@@ -402,8 +402,8 @@
     "semantic_hash": ""
   },
   "pipeline.py": {
-    "mtime": 1795200092.2370267,
-    "seen": 1795200250.7820594,
+    "mtime": 1795200284.2430813,
+    "seen": 1795200286.2552605,
     "ast_hash": "237d0416cd6e7774ee7225a9417ba7ef",
     "semantic_hash": ""
   },
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1795086660.6948452,
-    "seen": 1795086669.326944,
-    "ast_hash": "17dd1b208211b6ed27e0da4d48e73b7f",
+    "mtime": 1795200284.4720433,
+    "seen": 1795200286.2552824,
+    "ast_hash": "440225f70b7d7be161df658906d08a15",
     "semantic_hash": ""
   },
   "frontend/AGENTS.md": {
@@ -564,8 +564,8 @@
     "semantic_hash": ""
   },
   "tests/test_clip_editing.py": {
-    "mtime": 1795200124.0538087,
-    "seen": 1795200250.7820685,
+    "mtime": 1795200284.2430813,
+    "seen": 1795200286.2552667,
     "ast_hash": "f8094e7bc41ffcbf713e41446efaf2d6",
     "semantic_hash": ""
   },

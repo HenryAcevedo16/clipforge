@@ -26,6 +26,8 @@
 
 ## Session log (newest first)
 
+- 2026-11-20 — Editar/Optimizar en videos normales sin volver a descargar (clip_src/), ganchos con sentido sin IA (_best_hook), nota absoluta sin IA. Revisado por Opus; 19 pruebas en verde. Pendiente: probar con un YouTube real en el PC; vigilar disco (≈20 s extra por clip).
+
 - 2026-11-19 â€” YouTube bot-check: cookies.txt/clientes/Deno/yt-dlp --pre; probar_youtube.bat.
 - 2026-11-18 â€” Directo editable; skills; banner Migajas Gaming (canal del dueÃ±o); versiÃ³n al arrancar.
 
