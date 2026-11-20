@@ -282,6 +282,7 @@ export function ClipEditor({ jobId, index, onClose, onChanged }: { jobId: string
       const nextTags = tags.split(/\s+/).filter(Boolean).map((tag) => tag.startsWith("#") ? tag : `#${tag}`);
       await api.updateClipMeta(jobId, index, { title: nextTitle, caption, hashtags: nextTags });
       setTitle(nextTitle);
+      setTags(nextTags.join(" "));
       setData((current) => current ? { ...current, clip: { ...current.clip, title: nextTitle, caption, hashtags: nextTags } } : current);
       toast("Título, descripción y hashtags guardados.");
       onChanged();
