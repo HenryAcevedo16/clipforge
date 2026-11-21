@@ -12,9 +12,9 @@
     "semantic_hash": ""
   },
   "app.py": {
-    "mtime": 1795144943.7524896,
-    "seen": 1795200250.7819355,
-    "ast_hash": "217462f62e63d6fe984d987c496e5886",
+    "mtime": 1795237504.6063137,
+    "seen": 1795237563.7496734,
+    "ast_hash": "a074b394765f0ba310132fb70145e9ae",
     "semantic_hash": ""
   },
   "frontend/app/ajustes/page.tsx": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "frontend/components/home/HomeFlow.tsx": {
-    "mtime": 1795144943.7524896,
-    "seen": 1795200250.781972,
-    "ast_hash": "2c6069831f6bd76dbdc24bb1a4c856ee",
+    "mtime": 1795237504.6067047,
+    "seen": 1795237563.7496998,
+    "ast_hash": "717ce3836b3c8c2782f540b5504e9d17",
     "semantic_hash": ""
   },
   "frontend/components/home/RecentProjects.tsx": {
@@ -126,9 +126,9 @@
     "semantic_hash": ""
   },
   "frontend/components/projects/ClipCard.tsx": {
-    "mtime": 1795204688.5032537,
-    "seen": 1795204762.454142,
-    "ast_hash": "195be18dbe743b67d182bdc6023ce1fc",
+    "mtime": 1795229051.2768228,
+    "seen": 1795237563.7497053,
+    "ast_hash": "dcdc2f4de39867fe607967e4c3dbfa8b",
     "semantic_hash": ""
   },
   "frontend/components/projects/ClipEditor.tsx": {
@@ -306,8 +306,8 @@
     "semantic_hash": ""
   },
   "frontend/lib/api/types.ts": {
-    "mtime": 1795204688.5028517,
-    "seen": 1795204762.4541755,
+    "mtime": 1795204877.3269758,
+    "seen": 1795237563.7497427,
     "ast_hash": "9372c2eda9e7add63d855cdc80c5c745",
     "semantic_hash": ""
   },
@@ -402,9 +402,9 @@
     "semantic_hash": ""
   },
   "pipeline.py": {
-    "mtime": 1795204862.1738439,
-    "seen": 1795204873.1473944,
-    "ast_hash": "9727f671df1db5fe894031fc744a9122",
+    "mtime": 1795237521.7276065,
+    "seen": 1795237563.7497697,
+    "ast_hash": "b73acce5174584783df78478e3cd08d3",
     "semantic_hash": ""
   },
   "scripts/gen_map.py": {
@@ -462,8 +462,8 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1795204759.2502613,
-    "seen": 1795204762.4542232,
+    "mtime": 1795204877.3269758,
+    "seen": 1795237563.749824,
     "ast_hash": "1520f96ab73e85f93453290807007a04",
     "semantic_hash": ""
   },
@@ -474,8 +474,8 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1795204759.2664487,
-    "seen": 1795204762.454227,
+    "mtime": 1795204877.3269758,
+    "seen": 1795237563.7498279,
     "ast_hash": "3932713efc6e632cefec7c9e9bfa9f2a",
     "semantic_hash": ""
   },
@@ -582,80 +582,80 @@
     "semantic_hash": ""
   },
   "rules.py": {
-    "mtime": 1795204610.4862525,
-    "seen": 1795204762.4542046,
+    "mtime": 1795204877.3338797,
+    "seen": 1795237563.749771,
     "ast_hash": "926d59f9137bb0e087f701558820ea32",
     "semantic_hash": ""
   },
   "tests/test_reglas.py": {
-    "mtime": 1795204866.3134053,
-    "seen": 1795204873.1474345,
+    "mtime": 1795204877.3338797,
+    "seen": 1795237563.7498097,
     "ast_hash": "bc2a5e85b83ac29101982f4f5cd5517b",
     "semantic_hash": ""
   },
   "reglas/LEEME.txt": {
-    "mtime": 1795204610.3252926,
-    "seen": 1795204762.454232,
+    "mtime": 1795204877.3302684,
+    "seen": 1795237563.749833,
     "ast_hash": "ad9801bf5fbdca37eaeba3c0ba7c7a00",
     "semantic_hash": ""
   },
   "reglas/colas_gancho.txt": {
-    "mtime": 1795204610.3250916,
-    "seen": 1795204762.454233,
+    "mtime": 1795204877.3338797,
+    "seen": 1795237563.7498345,
     "ast_hash": "1e3943b52c4b3fd25c7fb7fcfb63278d",
     "semantic_hash": ""
   },
   "reglas/ganchos.txt": {
-    "mtime": 1795204610.3252256,
-    "seen": 1795204762.454234,
+    "mtime": 1795204877.3338797,
+    "seen": 1795237563.7498357,
     "ast_hash": "78b5dbde3a76004e8f3e3f41b2fe341a",
     "semantic_hash": ""
   },
   "reglas/glosario.txt": {
-    "mtime": 1795204610.325203,
-    "seen": 1795204762.4542346,
+    "mtime": 1795204877.3338797,
+    "seen": 1795237563.7498367,
     "ast_hash": "8d2cfcef81ad9375556eadf9954b6ad3",
     "semantic_hash": ""
   },
   "reglas/guia_ia.md": {
-    "mtime": 1795204610.3252714,
-    "seen": 1795204762.4542353,
-    "ast_hash": "b197bf652bbc49a895d5ca8f071663b6",
+    "mtime": 1795237504.607066,
+    "seen": 1795237563.7498386,
+    "ast_hash": "a9f14c9a4c853b95af22fa7b13c72f64",
     "semantic_hash": ""
   },
   "reglas/mis_reglas/LEEME.txt": {
-    "mtime": 1795204610.3253195,
-    "seen": 1795204762.4542367,
+    "mtime": 1795204877.3338797,
+    "seen": 1795237563.7498398,
     "ast_hash": "aa3468d6a54a5f7d64d18db2d1c829de",
     "semantic_hash": ""
   },
   "reglas/muletillas_inicio.txt": {
-    "mtime": 1795204610.325044,
-    "seen": 1795204762.4542377,
+    "mtime": 1795204877.3338797,
+    "seen": 1795237563.7498412,
     "ast_hash": "fa835355b7cacc24dffc7f46770500cc",
     "semantic_hash": ""
   },
   "reglas/palabras_impacto.txt": {
-    "mtime": 1795204610.3249302,
-    "seen": 1795204762.4542384,
+    "mtime": 1795204877.3338797,
+    "seen": 1795237563.7498422,
     "ast_hash": "bca876024237463433ae2052968cb2db",
     "semantic_hash": ""
   },
   "reglas/relleno_cta.txt": {
-    "mtime": 1795204610.3251445,
-    "seen": 1795204762.4542396,
+    "mtime": 1795204877.3338797,
+    "seen": 1795237563.7498431,
     "ast_hash": "eb1a11ccfea0161c3a9316b1268dbf41",
     "semantic_hash": ""
   },
   "reglas/resaltado.txt": {
-    "mtime": 1795204610.3252501,
-    "seen": 1795204762.4542403,
+    "mtime": 1795204877.3338797,
+    "seen": 1795237563.7498443,
     "ast_hash": "fc8329070114ee382e4a241aaa4d9e18",
     "semantic_hash": ""
   },
   "reglas/risas.txt": {
-    "mtime": 1795204610.325175,
-    "seen": 1795204762.4542413,
+    "mtime": 1795204877.3338797,
+    "seen": 1795237563.7498453,
     "ast_hash": "659171f36c10bef80a1143dc25d3f9cc",
     "semantic_hash": ""
   },

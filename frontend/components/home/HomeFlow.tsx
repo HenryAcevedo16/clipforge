@@ -63,7 +63,7 @@ interface Settings {
 }
 
 const DEFAULTS: Settings = {
-  numClips: 5, minLen: 20, maxLen: 60, aspect: "9:16", captionStyle: "viral", review: false, templateId: null,
+  numClips: 5, minLen: 25, maxLen: 45, aspect: "9:16", captionStyle: "viral", review: false, templateId: null,
   layout: "auto", jumpcuts: true, zoom: true, progressBar: true, colorPop: true, music: true, captions: true, showHook: true, highlightKw: true, loudnorm: true, useAi: false, refine: true, completeIdeas: true, videoAi: false, snapSilence: true, live: false, liveEvery: 3, smartDownload: true, quality: "max", aiProvider: "auto", pick: "ia", logoOn: true,
 };
 

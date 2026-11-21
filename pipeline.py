@@ -164,8 +164,8 @@ ASPECTS = {"9:16": (1080, 1920), "1:1": (1080, 1080), "4:5": (1080, 1350), "16:9
 @dataclass
 class Options:
     num_clips: int = 5
-    min_len: float = 20.0          # segundos
-    max_len: float = 60.0
+    min_len: float = 25.0          # segundos (el promedio de vista de los Shorts ronda 22-31 s)
+    max_len: float = 45.0
     aspect: str = "9:16"
     layout: str = "auto"            # auto | speaker (quien habla) | wide (abierto) | split (dividido) | track | blur | gaming (webcam arriba + juego) | gamecenter (solo juego)
     caption_style: str = "viral"    # viral | caja | karaoke | neon | minimal | none
@@ -1152,14 +1152,14 @@ def _hook_options(hook: str, text: str, index: int, max_options: int = 3) -> lis
         txt = txt.strip().upper()
         if t == "pregunta" and not txt.endswith("?"):
             txt += "?"
-        if len(txt.split()) <= 9 and txt not in out:
+        if len(txt.split()) <= 7 and txt not in out:
             out.append(txt)
         if len(out) >= max_options:
             break
     return out
 
 
-def _best_hook(lines: list, feats: list, i: int, j: int, max_words: int = 7) -> str:
+def _best_hook(lines: list, feats: list, i: int, j: int, max_words: int = 6) -> str:
     """Frase corta con sentido para el gancho: la línea con más fuerza (pregunta, número, palabra clave, risa)
     de los primeros ~25 s del clip, sin conectores al inicio ni al final, cortada en un límite natural."""
     t0, best, best_sc = lines[i]["s"], None, -1e9
@@ -1730,7 +1730,7 @@ def select_ai(tr: dict, opts: Options, video_title: str = "", src: Optional[Path
         start_line: int = Field(description="índice de la primera frase del clip (la del gancho)")
         end_line: int = Field(description="índice de la última frase del clip (incluida), donde está el remate")
         title: str = Field(description="título para la publicación, máx 60 caracteres")
-        hook: str = Field(description="texto en pantalla los primeros 3 s, máx 7 palabras, que genere curiosidad")
+        hook: str = Field(description="texto en pantalla los primeros 3 s, máx 6 palabras, que genere curiosidad")
         opening_words: str = Field(description="las primeras 4-6 palabras que se DICEN en el clip, copiadas "
                                                "literalmente de la transcripción (sirve para verificar el corte)")
         gancho: int = Field(description="0-10: ¿los primeros 3 segundos detienen el scroll?")
@@ -3637,7 +3637,7 @@ def manual_clips(tr: dict, ranges: list, opts: Options, video_title: str = "") -
     class Meta(BaseModel):
         clip: int = Field(description="número del clip")
         title: str = Field(description="título para publicar, máx 60 caracteres")
-        hook: str = Field(description="texto en pantalla los primeros 3 s, máx 7 palabras, que genere curiosidad")
+        hook: str = Field(description="texto en pantalla los primeros 3 s, máx 6 palabras, que genere curiosidad")
         caption: str = Field(description="descripción con una pregunta que invite a comentar")
         hashtags: list[str] = Field(description="3-6 hashtags")
         keywords: list[str] = Field(description="3-8 palabras EXACTAS dichas en el clip que conviene resaltar")
@@ -4154,7 +4154,7 @@ y reescribiendo los textos; un problema de encuadre se arregla eligiendo otro "l
 
     class Copy(BaseModel):
         title: str = Field(description="título para publicar, máx 60 caracteres")
-        hook: str = Field(description="texto en pantalla los primeros 3 s, máx 7 palabras, que genere curiosidad")
+        hook: str = Field(description="texto en pantalla los primeros 3 s, máx 6 palabras, que genere curiosidad")
         caption: str = Field(description="descripción con una pregunta que invite a comentar")
         hashtags: list[str] = Field(description="3-6 hashtags")
 
@@ -4206,7 +4206,7 @@ Gancho actual: {c.get('hook') or '(ninguno)'}
 Texto del clip:
 {cut_text(cut)}
 
-Escribe un título (máx 60 caracteres), un gancho (máx 7 palabras, que genere curiosidad y tenga sentido por sí solo),
+Escribe un título (máx 60 caracteres), un gancho (máx 6 palabras, que genere curiosidad y tenga sentido por sí solo),
 una descripción con una pregunta que invite a comentar y 3-6 hashtags. No inventes datos que no se dicen en el clip.{guide_txt}{extra}"""
         return ask_claude(pr, Copy, o, role="copy")
 
@@ -4225,7 +4225,7 @@ Hashtags: {' '.join(cp.hashtags)}
 Palabras clave: {', '.join(kws_)}
 Problemas que debía arreglar: {'; '.join(f"{p.get('tipo')}: {p.get('detalle', '')}"[:100] for p in probs_all) or '(ninguno)'}
 Comprueba: (1) empieza en el gancho, sin muletillas; (2) el final cierra la idea y lo de después no la completa;
-(3) título <= 60 caracteres y gancho <= 7 palabras con sentido; (4) las palabras clave aparecen en el clip; (5) cada problema está arreglado.
+(3) título <= 60 caracteres y gancho <= 6 palabras con sentido; (4) las palabras clave aparecen en el clip; (5) cada problema está arreglado.
 ok=true si todo bien. Si no: fix = tech (corte), copy (textos) o both, y motivo breve (máx 120 caracteres)."""
         return ask_claude(pr, Verify, o, role="verify")
 
