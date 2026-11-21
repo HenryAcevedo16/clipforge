@@ -25,7 +25,7 @@ def hook_of(texts, gap=3.0):
 # ---------------- gancho ----------------
 def test_hook_max_words_and_no_filler_edges():
     h = hook_of(["Entonces pues bueno la cosa es que nadie sabe por qué pasa esto de verdad"])
-    assert 0 < len(h.split()) <= 7
+    assert 0 < len(h.split()) <= 6
     assert pipeline._norm(h.split()[0]) not in pipeline.FILLER_START
     assert pipeline._norm(h.split()[-1]) not in pipeline.HOOK_TAIL
 

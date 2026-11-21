@@ -396,9 +396,9 @@
     "semantic_hash": ""
   },
   "novoclip.py": {
-    "mtime": 1794921981.113366,
-    "seen": 1795086669.3269253,
-    "ast_hash": "752e343ed747bd2f80b6d16d6f196232",
+    "mtime": 1795237605.237526,
+    "seen": 1795237610.8245044,
+    "ast_hash": "0fae3526408197606373852c974bf450",
     "semantic_hash": ""
   },
   "pipeline.py": {
@@ -564,9 +564,9 @@
     "semantic_hash": ""
   },
   "tests/test_clip_editing.py": {
-    "mtime": 1795200284.2430813,
-    "seen": 1795200286.2552667,
-    "ast_hash": "f8094e7bc41ffcbf713e41446efaf2d6",
+    "mtime": 1795237605.2330956,
+    "seen": 1795237610.8245165,
+    "ast_hash": "bc235ee4e7140b3f0c7ae952d2935033",
     "semantic_hash": ""
   },
   "tests/test_novoclip_signals.py": {
@@ -618,9 +618,9 @@
     "semantic_hash": ""
   },
   "reglas/guia_ia.md": {
-    "mtime": 1795237504.607066,
-    "seen": 1795237563.7498386,
-    "ast_hash": "a9f14c9a4c853b95af22fa7b13c72f64",
+    "mtime": 1795237605.2559412,
+    "seen": 1795237610.824547,
+    "ast_hash": "dae821b23b500384b47acc8bac805b25",
     "semantic_hash": ""
   },
   "reglas/mis_reglas/LEEME.txt": {
