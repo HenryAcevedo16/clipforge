@@ -113,6 +113,7 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
   const [quick, setQuick] = useState(false); // edición rápida de título y hashtags
   const [title, setTitle] = useState(c.title);
   const [tags, setTags] = useState(c.hashtags.join(" "));
+  const [desc, setDesc] = useState(c.caption || "");
   const [saving, setSaving] = useState(false);
   const [hookEdit, setHookEdit] = useState(false); // editar el gancho (texto de arriba del video)
   const [hook, setHook] = useState(c.hook);
@@ -161,7 +162,7 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
   const saveMeta = async () => {
     setSaving(true);
     try {
-      await api.updateClipMeta(jobId, c.index, { title: title.trim() || c.title, hashtags: tags.split(/\s+/).filter(Boolean) });
+      await api.updateClipMeta(jobId, c.index, { title: title.trim() || c.title, caption: desc.trim() || c.caption, hashtags: tags.split(/\s+/).filter(Boolean) });
       toast("Guardado.");
       setQuick(false);
       onChanged?.();
@@ -198,10 +199,11 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
             {quick ? (
               <div className="flex flex-col gap-2">
                 <input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Título del clip" className="min-h-11 w-full rounded-xl border border-line bg-raised-2 px-3 text-base font-bold text-ink focus-visible:outline-2 focus-visible:outline-accent-hi" />
+                <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} aria-label="Descripción para publicar" placeholder="Descripción" className="w-full rounded-xl border border-line bg-raised-2 px-3 py-2 text-sm text-ink focus-visible:outline-2 focus-visible:outline-accent-hi" />
                 <input value={tags} onChange={(e) => setTags(e.target.value)} aria-label="Hashtags (separados por espacios)" placeholder="#hashtag1 #hashtag2" className="min-h-11 w-full rounded-xl border border-line bg-raised-2 px-3 text-sm text-ink focus-visible:outline-2 focus-visible:outline-accent-hi" />
                 <div className="flex gap-2">
                   <Button size="sm" variant="primary" onClick={saveMeta} loading={saving}>Guardar</Button>
-                  <Button size="sm" onClick={() => { setQuick(false); setTitle(c.title); setTags(c.hashtags.join(" ")); }}>Cancelar</Button>
+                  <Button size="sm" onClick={() => { setQuick(false); setTitle(c.title); setDesc(c.caption || ""); setTags(c.hashtags.join(" ")); }}>Cancelar</Button>
                 </div>
               </div>
             ) : (
@@ -258,6 +260,12 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
             </p>
           )
         )}
+        {c.caption && c.caption !== c.title && (
+          <p className="rounded-2xl bg-raised-2 px-3.5 py-2.5 text-sm [overflow-wrap:anywhere]">
+            <span className="text-ink-3">Descripción: </span>
+            <span className="text-ink-2">{c.caption}</span>
+          </p>
+        )}
         {c.hashtags.length > 0 && (
           <ul className="flex max-h-[4.5rem] flex-wrap gap-1.5 overflow-hidden" aria-label="Hashtags">
             {c.hashtags.slice(0, 8).map((h, i) => (
@@ -308,8 +316,8 @@ export function ClipCard({ jobId, c, onEdit, onChanged }: { jobId: string; c: Cl
           </p>
         )}
         <div className="mt-auto flex flex-wrap gap-2 pt-1">
-          <Button size="sm" onClick={() => { setTitle(c.title); setTags(c.hashtags.join(" ")); setQuick(true); }} icon={<Pencil className="size-4" aria-hidden />} className="max-sm:flex-1">
-            Título y hashtags
+          <Button size="sm" onClick={() => { setTitle(c.title); setDesc(c.caption || ""); setTags(c.hashtags.join(" ")); setQuick(true); }} icon={<Pencil className="size-4" aria-hidden />} className="max-sm:flex-1">
+            Título, descripción y hashtags
           </Button>
           {onEdit && (
             <Button size="sm" onClick={() => runOpt("opt")} loading={optBusy === "opt"} disabled={!!optBusy} icon={<Sparkles className="size-4" aria-hidden />} className="max-sm:flex-1">
