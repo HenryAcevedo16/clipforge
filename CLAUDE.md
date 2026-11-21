@@ -6,6 +6,7 @@
 - Haiku (`haiku-worker`) investiga de forma acotada: encuentra símbolos, contratos, docs, logs y pruebas. No decide arquitectura ni hace cambios ambiguos.
 - Sonnet (`sonnet-worker`) es el implementador predeterminado: backend Python/FastAPI, pipeline FFmpeg/Whisper/yt-dlp y frontend Next.js/React/TypeScript.
 - Sonnet (`sonnet-reviewer`) revisa de forma independiente los cambios tras la implementación. No edita; informa hallazgos con archivo:línea. Sonnet implementa las correcciones.
+- **Modo ahorro (advisor):** inicia con `claude --model sonnet --advisor opus`. Sonnet trabaja; consulta al advisor Opus solo (1) antes de fijar un plan, (2) cuando el mismo error aparece dos veces y (3) antes de declarar la tarea terminada. Opus nunca escribe código. Haiku sigue explorando. Si `--advisor` no está disponible, usa `opus-worker` solo en esos tres momentos.
 - No invoques los cuatro agentes para cada tarea pequeña. Sigue `.claude/skills/model-router/SKILL.md` y `docs/AI_TEAM.md`.
 - Carga `clipforge-media-pipeline` solo para ingesta, transcripción, clipping, timestamps, encuadre, audio, FFmpeg, GPU o directos. Carga `clipforge-frontend` solo para Next.js, React, TypeScript, editor o UI.
 - Usa `token-optimization` para sesiones largas, auditorías y checkpoints. Prefiere `/clear` + `docs/STATUS.md` cuando el contexto anterior ya no sea útil.
